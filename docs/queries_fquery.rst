@@ -64,7 +64,7 @@ Values
 
 You need to call ``values`` on a FQuery object to specify the metrics you want to use in your request. values accepts both arguments and keyword arguments::
 
-    from fiqs.aggregation import Sum, Avg
+    from fiqs.aggregations import Sum, Avg
 
     from .models import Sale
 
@@ -109,12 +109,100 @@ Sum
 
 Used for the Elasticsearch `sum aggregation <https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-metrics-sum-aggregation.html>`_
 
+Histogram
+^^^^^^^^^
+
+Used for the Elasticsearch `histogram aggregation <https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-histogram-aggregation.html>`_
+This aggregation requires the `interval` parameter. It also accepts `max` and `min` parameters (both need to be specified) that acts as extended bounds::
+
+    from fiqs.aggregations import Histogram
+
+    from .models import Sale
+
+    FQuery(search).values(
+        total_sales=Sum(Sale.price),
+    ).group_by(
+        Histogram(
+            Sale.price,
+            # Mandatory
+            interval=100,
+            # Optional together:
+            min=0,
+            max=500,
+        )
+    )
+
+DateHistogram
+^^^^^^^^^^^^^
+
+Used for the Elasticsearch `date histogram aggregation <https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-datehistogram-aggregation.html>`_
+This aggregation behaves like the Histogram aggregation. Intervals need to follow Elasticsearch syntax::
+
+    from fiqs.aggregations import DateHistogram
+
+    from .models import Sale
+
+    FQuery(get_search()).values(
+        total_sales=Sum(Sale.price),
+    ).group_by(
+        DateHistogram(
+            Sale.timestamp,
+            interval='1d',
+            min=datetime(2016, 1, 1),
+            max=datetime(2016, 1, 31),
+        ),
+    )
+
+
+DateRange
+^^^^^^^^^
+
+Used for the Elasticsearch `date range aggregation <https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-daterange-aggregation.html>`_
+This aggregation needs defined ranges, which can contain keys::
+
+    from fiqs.aggregations import DateRange
+
+    from .models import Sale
+
+    ranges = [
+        {
+            'from': datetime(2016, 1, 1),
+            'to': datetime(2016, 1, 15),
+        },
+        {
+            'from': datetime(2016, 1, 15),
+            'to': datetime(2016, 1, 31),
+        },
+    ]
+    # Or:
+    ranges = [
+        {
+            'from': datetime(2016, 1, 1),
+            'to': datetime(2016, 1, 15),
+            'key': 'first_half',
+        },
+        {
+            'from': datetime(2016, 1, 15),
+            'to': datetime(2016, 1, 31),
+            'key': 'second_half',
+        },
+    ]
+
+    fquery = FQuery(get_search()).values(
+        Count(Sale),
+    ).group_by(
+        DateRange(
+            Sale.timestamp,
+            ranges=ranges,
+        ),
+    )
+
 Operations
 ^^^^^^^^^^
 
 fiqs lets you query computed fields, created with operations on a model's fields. For example::
 
-    from fiqs.aggregation import Sum
+    from fiqs.aggregations import Sum
 
     from .models import TrafficCount
 

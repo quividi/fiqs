@@ -4,14 +4,11 @@ import json
 import os
 import time
 
+import pytest
 from elasticsearch.helpers import bulk
-
 from elasticsearch_dsl import Mapping, Nested
 
-import pytest
-
 from fiqs.testing.utils import get_client
-
 
 SALE_INDEX_NAME = 'test_sale'
 TRAFFIC_INDEX_NAME = 'test_traffic'
@@ -68,7 +65,8 @@ def traffic_mapping():
 
 def create_index(client, index_name, mapping):
     request_body = {'mappings': mapping.to_dict()}
-    return client.indices.create(index=index_name, body=request_body, ignore=400)
+    return client.indices.create(
+        index=index_name, body=request_body, ignore=400)
 
 
 def delete_index(client, index_name):
@@ -95,12 +93,14 @@ def insert_documents(client, index_name, fixture_path, doc_type):
 
 def insert_sale_documents(client):
     create_sale_index(client)
-    insert_documents(client, SALE_INDEX_NAME, SALE_FIXTURE_PATH, SALE_DOC_TYPE)
+    insert_documents(
+        client, SALE_INDEX_NAME, SALE_FIXTURE_PATH, SALE_DOC_TYPE)
 
 
 def insert_traffic_documents(client):
     create_traffic_index(client)
-    insert_documents(client, TRAFFIC_INDEX_NAME, TRAFFIC_FIXTURE_PATH, TRAFFIC_DOC_TYPE)
+    insert_documents(
+        client, TRAFFIC_INDEX_NAME, TRAFFIC_FIXTURE_PATH, TRAFFIC_DOC_TYPE)
 
 
 def create_sale_index(client):
@@ -119,7 +119,7 @@ def delete_traffic_index(client):
     delete_index(client, TRAFFIC_INDEX_NAME)
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def elasticsearch_sale(request):
     client = get_client()
     insert_sale_documents(client)
@@ -130,7 +130,7 @@ def elasticsearch_sale(request):
     return client
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def elasticsearch_traffic(request):
     client = get_client()
     insert_traffic_documents(client)
@@ -152,7 +152,13 @@ def write_output(search, name):
         d = result._d_
         d.pop('took', None)  # Not used and may change between calls
 
-        json.dump(result._d_, f, indent=4, ensure_ascii=False, encoding='utf-8', sort_keys=True)
+        json.dump(
+            result._d_,
+            f,
+            indent=4,
+            ensure_ascii=False,
+            sort_keys=True,
+        )
 
 
 def write_fquery_output(fquery, name):
@@ -163,7 +169,13 @@ def write_fquery_output(fquery, name):
         d = result._d_
         d.pop('took', None)  # Not used and may change between calls
 
-        json.dump(result._d_, f, indent=4, ensure_ascii=False, encoding='utf-8', sort_keys=True)
+        json.dump(
+            result._d_,
+            f,
+            indent=4,
+            ensure_ascii=False,
+            sort_keys=True,
+        )
 
 
 def load_output(name):

@@ -7,28 +7,28 @@ import pytest
 import six
 
 from fiqs.aggregations import (
-    Sum,
-    Count,
-    Avg,
-    DateHistogram,
     Addition,
-    Ratio,
-    Subtraction,
-    ReverseNested,
+    Avg,
     Cardinality,
+    Count,
+    DateHistogram,
     DateRange,
+    Histogram,
+    Ratio,
+    ReverseNested,
+    Subtraction,
+    Sum,
 )
-from fiqs.exceptions import ConfigurationError
+from fiqs.exceptions import ConfigurationError, MissingParameterException
 from fiqs.fields import (
-    IntegerField,
     DataExtendedField,
     FieldWithChoices,
     FieldWithRanges,
     GroupedField,
+    IntegerField,
 )
 from fiqs.models import Model
 from fiqs.query import FQuery
-
 from fiqs.testing.models import Sale, TrafficCount
 from fiqs.testing.utils import get_search
 from fiqs.tests.conftest import load_output
@@ -160,6 +160,76 @@ def test_two_aggregations_two_metrics():
     fsearch = fquery._configure_search()
 
     assert search.to_dict() == fsearch.to_dict()
+
+
+@pytest.mark.parametrize('hmin,hmax', [
+    (0, 1000),
+    (None, None),
+])
+def test_histogram(hmin, hmax):
+    histogram_params = {
+        'field': 'price',
+        'interval': 100,
+        'min_doc_count': 0,
+    }
+    if hmin is not None:
+        histogram_params.setdefault('extended_bounds', {})
+        histogram_params['extended_bounds']['min'] = hmin
+    if hmax is not None:
+        histogram_params.setdefault('extended_bounds', {})
+        histogram_params['extended_bounds']['max'] = hmax
+
+    search = get_search()
+    search.aggs.bucket(
+        'price', 'histogram', **histogram_params
+    ).metric(
+        'total_sales', 'sum', field='price',
+    )
+
+    histogram_params = {
+        'interval': 100,
+    }
+    if hmin is not None:
+        histogram_params['min'] = hmin
+    if hmax is not None:
+        histogram_params['max'] = hmax
+
+    fquery = FQuery(get_search()).values(
+        total_sales=Sum(Sale.price),
+    ).group_by(
+        Histogram(
+            Sale.price,
+            **histogram_params
+        ),
+    )
+    fsearch = fquery._configure_search()
+
+    assert search.to_dict() == fsearch.to_dict()
+
+
+@pytest.mark.parametrize('hmin,hmax', [
+    (None, 1000),
+    (100, None),
+])
+def test_histogram_incomplete_extended_bounds(hmin, hmax):
+    histogram_params = {
+        'interval': 100,
+    }
+    if hmin is not None:
+        histogram_params['min'] = hmin
+    if hmax is not None:
+        histogram_params['max'] = hmax
+
+    fquery = FQuery(get_search()).values(
+        total_sales=Sum(Sale.price),
+    ).group_by(
+        Histogram(
+            Sale.price,
+            **histogram_params
+        ),
+    )
+    with pytest.raises(MissingParameterException):
+        fquery._configure_search()
 
 
 def test_date_histogram():
@@ -1080,6 +1150,36 @@ def test_flatten_result_cast_timestamp():
         assert type(line['total_sales']) == int
 
 
+def test_flatten_result_histogram():
+    fquery = FQuery(get_search()).values(
+        total_sales=Sum(Sale.price),
+    ).group_by(
+        Histogram(
+            Sale.price,
+            interval=100,
+        ),
+    )
+
+    result = load_output('total_sales_by_price_histogram')
+    lines = fquery._flatten_result(result)
+
+    assert len(lines) == 11  # Prices go from 0 to 1000
+
+    for line in lines:
+        # Doc count is present
+        assert 'doc_count' in line
+        assert type(line['doc_count']) == int
+        # Aggregation and metric are present
+        assert 'price' in line
+        assert type(line['price']) == int
+        assert 'total_sales' in line
+        assert type(line['total_sales']) == int
+
+    # All price ranges are present
+    assert sorted(
+        [line['price'] for line in lines]) == list(range(0, 1100, 100))
+
+
 def test_computed_field():
     computed_field = Addition(
         Sum(TrafficCount.incoming_traffic),
@@ -1501,7 +1601,7 @@ def test_fill_missing_buckets_nothing_to_do():
 
     result = load_output('total_sales_by_shop')
     lines = fquery._flatten_result(result)
-    assert lines == fquery._add_missing_lines(result, lines)
+    assert lines == fquery._add_missing_lines(lines)
 
 
 def test_fill_missing_buckets_cannot_do_anything():
@@ -1519,7 +1619,7 @@ def test_fill_missing_buckets_cannot_do_anything():
     ]
 
     lines = fquery._flatten_result(result)
-    assert lines == fquery._add_missing_lines(result, lines)
+    assert lines == fquery._add_missing_lines(lines)
 
     assert len(lines) == 9
 
@@ -1542,7 +1642,7 @@ def test_fill_missing_buckets_custom_choices():
     assert len(lines) == 9
     assert sorted([line['shop_id'] for line in lines]) == list(range(2, 11))
 
-    lines == fquery._add_missing_lines(result, lines)
+    lines == fquery._add_missing_lines(lines)
     assert len(lines) == 10
     assert sorted([line['shop_id'] for line in lines]) == list(range(1, 11))
 
@@ -1576,7 +1676,7 @@ def test_fill_missing_buckets_field_choices():
     assert len(lines) == 9
     assert sorted([line['shop_id'] for line in lines]) == list(range(2, 11))
 
-    lines == fquery._add_missing_lines(result, lines)
+    lines == fquery._add_missing_lines(lines)
     assert len(lines) == 10
     assert sorted([line['shop_id'] for line in lines]) == list(range(1, 11))
 
@@ -1612,7 +1712,7 @@ def test_fill_missing_buckets_field_choices_pretty():
     assert len(lines) == 9
     assert sorted([line['shop_id'] for line in lines]) == list(range(2, 11))
 
-    lines = fquery._add_missing_lines(result, lines)
+    lines = fquery._add_missing_lines(lines)
     assert len(lines) == 10
     assert sorted([line['shop_id'] for line in lines]) == list(range(1, 11))
 
@@ -1652,7 +1752,7 @@ def test_fill_missing_buckets_values_in_other_agg():
     # Except the one I removed
     assert counter[1] == 2
 
-    lines = fquery._add_missing_lines(result, lines)
+    lines = fquery._add_missing_lines(lines)
     assert len(lines) == 30
     # All shop ids are present three times
     counter = Counter([line['shop_id'] for line in lines])
@@ -1671,88 +1771,152 @@ def test_fill_missing_buckets_values_in_other_agg():
     }
 
 
-def test_fill_missing_buckets_range_nothing_to_do():
+def test_fill_missing_buckets_histogram_nothing_to_do():
+    fquery = FQuery(get_search()).values(
+        total_sales=Sum(Sale.price),
+    ).group_by(
+        Histogram(
+            Sale.price,
+            interval=100,
+        ),
+    )
+    fquery._configure_search()
+
+    result = load_output('total_sales_by_price_histogram')
+
+    lines = fquery._flatten_result(result)
+    assert len(lines) == 11
+    lines = fquery._add_missing_lines(lines)
+    assert len(lines) == 11
+
+
+def test_fill_missing_buckets_histogram():
+    fquery = FQuery(get_search()).values(
+        total_sales=Sum(Sale.price),
+    ).group_by(
+        Histogram(
+            Sale.price,
+            interval=100,
+            # We force a range where there are no buckets
+            min=0,
+            max=1500,
+        ),
+    )
+    fquery._configure_search()
+
+    result = load_output('total_sales_by_price_histogram')
+
+    lines = fquery._flatten_result(result)
+    lines = fquery._add_missing_lines(lines)
+    # No missing lines are added since when specifying extended_bounds
+    # in ES, ES automatically adds empty buckets where needed
+    assert len(lines) == 11
+
+
+@pytest.mark.parametrize('pretty_period,interval,nb_lines', [
+    ('day', '1d', 31),
+    ('week', '1w', 5),
+    ('month', '1M', 2),
+    ('year', '1y', 2),
+])
+def test_fill_missing_buckets_date_histogram_nothing_to_do(
+        pretty_period, interval, nb_lines):
     search = get_search()
     fquery = FQuery(search).values(
         total_sales=Sum(Sale.price),
     ).group_by(
         DateHistogram(
             Sale.timestamp,
-            interval='1d',
+            interval=interval,
             min=datetime(2016, 1, 1),
             max=datetime(2016, 1, 31),
         ),
     )
     fquery._configure_search()
 
-    result = load_output('total_sales_day_by_day')
+    result = load_output(
+        'total_sales_{}_by_{}'.format(pretty_period, pretty_period))
 
     lines = fquery._flatten_result(result)
-    lines = fquery._add_missing_lines(result, lines)
-    assert len(lines) == 31
+    lines = fquery._add_missing_lines(lines)
+    assert len(lines) == nb_lines
 
 
-def test_fill_missing_buckets_date_histogram():
+@pytest.mark.parametrize('pretty_period,interval,start,end,nb_lines', [
+    ('day', '1d', datetime(2015, 12, 1), datetime(2016, 1, 31), 62),
+    ('week', '1w', datetime(2015, 12, 1), datetime(2016, 1, 31), 9),
+    ('month', '1M', datetime(2015, 12, 1), datetime(2016, 6, 1), 7),
+    ('year', '1y', datetime(2012, 1, 1), datetime(2016, 1, 31), 5),
+])
+def test_fill_missing_buckets_date_histogram(pretty_period, interval,
+                                             start, end, nb_lines):
     search = get_search()
     fquery = FQuery(search).values(
+        total_sales=Sum(Sale.price),
+    ).group_by(
+        DateHistogram(
+            Sale.timestamp,
+            interval=interval,
+            min=start,
+            max=end,
+        ),
+    )
+    fquery._configure_search()
+
+    result = load_output(
+        'total_sales_{}_by_{}'.format(pretty_period, pretty_period))
+
+    lines = fquery._flatten_result(result)
+    lines = fquery._add_missing_lines(lines)
+    assert len(lines) == nb_lines
+
+
+def test_fill_missing_buckets_date_histogram_multiple_days():
+    start = datetime(2015, 12, 1)
+    end = datetime(2016, 1, 31)
+
+    fquery = FQuery(get_search()).values(
+        total_sales=Sum(Sale.price),
+    ).group_by(
+        DateHistogram(
+            Sale.timestamp,
+            interval='4d',
+            min=start,
+            max=end,
+        ),
+    )
+    fquery._configure_search()
+
+    result = load_output('total_sales_every_four_days')
+
+    lines = fquery._flatten_result(result)
+    lines = fquery._add_missing_lines(lines)
+    assert len(lines) == 16
+
+
+@pytest.mark.parametrize('start,end,nb_lines', [
+    (datetime(2016, 1, 1), datetime(2016, 1, 31), 31),
+    (datetime(2015, 12, 1), datetime(2016, 1, 31), 61),
+])
+def test_fill_missing_buckets_date_histogram_offset(start, end, nb_lines):
+    fquery = FQuery(get_search()).values(
         total_sales=Sum(Sale.price),
     ).group_by(
         DateHistogram(
             Sale.timestamp,
             interval='1d',
-            min=datetime(2015, 12, 1),
-            max=datetime(2016, 1, 31),
+            offset='+8h',
+            min=start,
+            max=end,
         ),
     )
     fquery._configure_search()
 
-    result = load_output('total_sales_day_by_day')
+    result = load_output('total_sales_by_day_offset_8hours')
 
     lines = fquery._flatten_result(result)
-    lines = fquery._add_missing_lines(result, lines)
-    assert len(lines) == 62
-
-
-def test_fill_missing_buckets_date_histogram_month_nothing_to_do():
-    search = get_search()
-    fquery = FQuery(search).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        DateHistogram(
-            Sale.timestamp,
-            interval='1M',
-            min=datetime(2016, 1, 1),
-            max=datetime(2016, 1, 31),
-        ),
-    )
-    fquery._configure_search()
-
-    result = load_output('total_sales_month_by_month')
-
-    lines = fquery._flatten_result(result)
-    lines = fquery._add_missing_lines(result, lines)
-    assert len(lines) == 2
-
-
-def test_fill_missing_buckets_date_histogram_month():
-    search = get_search()
-    fquery = FQuery(search).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        DateHistogram(
-            Sale.timestamp,
-            interval='1M',
-            min=datetime(2015, 12, 1),
-            max=datetime(2016, 6, 1),
-        ),
-    )
-    fquery._configure_search()
-
-    result = load_output('total_sales_month_by_month')
-
-    lines = fquery._flatten_result(result)
-    lines = fquery._add_missing_lines(result, lines)
-    assert len(lines) == 7
+    lines = fquery._add_missing_lines(lines)
+    assert len(lines) == nb_lines
 
 
 def test_fill_missing_buckets_ranges():
@@ -1778,7 +1942,7 @@ def test_fill_missing_buckets_ranges():
     assert len(lines) == 6  # 3 shop ranges, 2 payment types
     assert set([l['payment_type'] for l in lines]) == {'cash', 'store_credit'}
 
-    lines = fquery._add_missing_lines(result, lines)
+    lines = fquery._add_missing_lines(lines)
     assert len(lines) == 9  # 3 shop ranges, 3 payment types
     added_lines = [l for l in lines if l['payment_type'] == 'wire_transfer']
     range_keys = ['1 - 5', '5 - 11', '11 - 15']
@@ -1798,7 +1962,7 @@ def test_fill_missing_buckets_nested_nothing_to_do():
     lines = fquery._flatten_result(result)
     assert len(lines) == 10  # 10 parts
 
-    lines = fquery._add_missing_lines(result, lines)
+    lines = fquery._add_missing_lines(lines)
     assert len(lines) == 10
 
 
@@ -1824,7 +1988,7 @@ def test_fill_missing_buckets_nested():
     lines = fquery._flatten_result(result)
     assert len(lines) == 99  # 10 parts, 10 products minus the one we removed
 
-    lines = fquery._add_missing_lines(result, lines)
+    lines = fquery._add_missing_lines(lines)
     assert len(lines) == 100
 
 
@@ -1857,7 +2021,7 @@ def test_fill_missing_buckets_reverse_nested_doc_count():
     assert len(lines) == 4
     assert sorted([l['product_type'] for l in lines]) == product_types[1:]
 
-    lines = fquery._add_missing_lines(result, lines)
+    lines = fquery._add_missing_lines(lines)
     assert len(lines) == 5
     assert sorted([l['product_type'] for l in lines]) == product_types
 
@@ -1903,7 +2067,7 @@ def test_fill_missing_buckets_reverse_nested():
         assert str(ReverseNested(Sale, total_sales=Sum(Sale.price))) in line
         assert str(ReverseNested(Sale, Count(Sale))) in line
 
-    lines = fquery._add_missing_lines(result, lines)
+    lines = fquery._add_missing_lines(lines)
     assert len(lines) == 5
     assert sorted([l['product_type'] for l in lines]) == product_types
     for line in lines:
@@ -1944,7 +2108,7 @@ def test_fill_missing_buckets_date_range_with_keys():
     assert len(lines) == 1
     assert [l['timestamp'] for l in lines] == ['second_half']
 
-    lines = fquery._add_missing_lines(result, lines)
+    lines = fquery._add_missing_lines(lines)
     assert len(lines) == 2
     assert [l['timestamp'] for l in lines] == ['second_half', 'first_half']
 
@@ -1982,7 +2146,7 @@ def test_fill_missing_buckets_date_range_multiple_group_by():
     lines = fquery._flatten_result(result)
     assert len(lines) == 4  # 2 date periods, 2 payment types
 
-    lines = fquery._add_missing_lines(result, lines)
+    lines = fquery._add_missing_lines(lines)
     assert len(lines) == 6  # 2 date periods, 2 + 1 payment types
 
 
@@ -2019,7 +2183,7 @@ def test_fill_missing_buckets_date_range_multiple_group_by_2():
     lines = fquery._flatten_result(result)
     assert len(lines) == 3  # 1 date period, 3 payment types
 
-    lines = fquery._add_missing_lines(result, lines)
+    lines = fquery._add_missing_lines(lines)
     assert len(lines) == 6  # 1 + 1 date periods, 3 payment types
 
 
@@ -2048,7 +2212,7 @@ def test_fill_missing_buckets_grouped_field():
     lines = fquery._flatten_result(result)
     assert len(lines) == 4  # 2 payment types, 2 groups
 
-    lines = fquery._add_missing_lines(result, lines)
+    lines = fquery._add_missing_lines(lines)
     assert len(lines) == 6  # 3 payment types, 2 groups
 
 
@@ -2080,5 +2244,5 @@ def test_fill_missing_buckets_grouped_field_2():
     lines = fquery._flatten_result(result)
     assert len(lines) == 3  # 3 payment types, 1 group
 
-    lines = fquery._add_missing_lines(result, lines)
+    lines = fquery._add_missing_lines(lines)
     assert len(lines) == 6  # 3 payment types, 2 groups
