@@ -16,8 +16,8 @@ f.close()
 
 
 install_requires = [
-    'elasticsearch>=6.0.0,<7.0.0',
-    'elasticsearch-dsl>=6.0.0,<7.0.0',
+    'elasticsearch>=7.0.0,<8.0.0',
+    'elasticsearch-dsl>=7.0.0,<8.0.0',
 ]
 setup_requires = [
     'Babel>=2.3.4',
