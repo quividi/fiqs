@@ -68,7 +68,7 @@ class Model(with_metaclass(ModelMetaClass, object)):
 
     @classmethod
     def get_mapping(cls):
-        m = Mapping(cls.get_doc_type())
+        m = Mapping()
         m.meta('dynamic', 'strict')
 
         nested_properties = {}
