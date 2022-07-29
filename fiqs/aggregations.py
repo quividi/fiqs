@@ -120,8 +120,8 @@ class Histogram(Aggregate):
 
         params.update(self.params)
 
-        if 'calendar_interval' not in params:
-            raise MissingParameterException('missing calendar_interval parameter')
+        if 'calendar_interval' not in params and 'interval' not in params:
+            raise MissingParameterException('missing calendar_interval or interval parameter')
 
         self.calendar_interval = params['calendar_interval']
 
