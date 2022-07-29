@@ -259,6 +259,21 @@ def get_rounded_date_from_timedelta(d, delta):
 class DateHistogram(Histogram):
     ref = 'date_histogram'
 
+    def agg_params(self):
+        agg_params = super().agg_params()
+        # check if we already did the processing of calendar vs fixed
+        if "interval" in agg_params:
+            # fixed_interval can handle multiples, everything else goes to calendar
+            if self.interval.isalpha():
+                agg_params["calendar_interval"] = agg_params.pop("interval")
+            else:
+                amount = int(self.interval[:-1])
+                if amount > 1:
+                    agg_params["fixed_interval"] = agg_params.pop("interval")
+                else:
+                    agg_params["calendar_interval"] = agg_params.pop("interval")
+        return agg_params
+
     def choice_keys(self):
         if not hasattr(self, 'min') or not hasattr(self, 'max'):
             return None
