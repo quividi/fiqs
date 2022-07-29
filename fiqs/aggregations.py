@@ -120,10 +120,10 @@ class Histogram(Aggregate):
 
         params.update(self.params)
 
-        if 'interval' not in params:
-            raise MissingParameterException('missing interval parameter')
+        if 'calendar_interval' not in params:
+            raise MissingParameterException('missing calendar_interval parameter')
 
-        self.fixed_interval = params['interval']
+        self.calendar_interval = params['calendar_interval']
 
         return params
 
@@ -263,33 +263,33 @@ class DateHistogram(Histogram):
         if not hasattr(self, 'min') or not hasattr(self, 'max'):
             return None
 
-        if not is_interval_handled(self.fixed_interval):
+        if not is_interval_handled(self.calendar_interval):
             return None
 
-        start = get_rounded_date_from_interval(self.min, self.fixed_interval)
+        start = get_rounded_date_from_interval(self.min, self.calendar_interval)
         agg_params = self.agg_params()
         if 'offset' in agg_params:
             start = get_offset_date(start, agg_params['offset'])
 
         end = self.max
 
-        if is_interval_standard(self.fixed_interval):
-            return self._choice_keys_standard(start, end, self.fixed_interval)
+        if is_interval_standard(self.calendar_interval):
+            return self._choice_keys_standard(start, end, self.calendar_interval)
 
-        elif is_interval_yearly(self.fixed_interval):
-            return self._choice_keys_yearly(start, end, self.fixed_interval)
+        elif is_interval_yearly(self.calendar_interval):
+            return self._choice_keys_yearly(start, end, self.calendar_interval)
 
-        elif is_interval_monthly(self.fixed_interval):
-            return self._choice_keys_monthly(start, end, self.fixed_interval)
+        elif is_interval_monthly(self.calendar_interval):
+            return self._choice_keys_monthly(start, end, self.calendar_interval)
 
-        elif is_interval_weekly(self.fixed_interval):
-            return self._choice_keys_weekly(start, end, self.fixed_interval)
+        elif is_interval_weekly(self.calendar_interval):
+            return self._choice_keys_weekly(start, end, self.calendar_interval)
 
         else:
             return None
 
     def _choice_keys_standard(self, start, end, interval):
-        delta = get_timedelta_from_interval(self.fixed_interval)
+        delta = get_timedelta_from_interval(self.calendar_interval)
 
         choice_keys = []
         current = start
