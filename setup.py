@@ -18,13 +18,13 @@ install_requires = [
     "elasticsearch-dsl>=8.0.0,<9.0.0",
 ]
 setup_requires = [
-    "Babel>=2.3.4",
+    "Babel>=2.14.0",
 ]
 tests_require = [
-    "Faker==0.7.3",
-    "pytest==5.3.2",
-    "pytest-cov==2.8.1",
-    "sh==1.12.14",
+    "Faker==24.4.0",
+    "pytest==8.1.1",
+    "pytest-cov==5.0.0",
+    "sh==2.0.6",
 ]
 
 
