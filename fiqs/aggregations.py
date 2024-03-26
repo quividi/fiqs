@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from collections import OrderedDict
 from datetime import datetime, timedelta
 
@@ -8,7 +6,7 @@ from fiqs.fields import Field
 from fiqs.models import Model
 
 
-class Metric(object):
+class Metric:
     def is_field_agg(self):
         return NotImplemented
 
@@ -33,15 +31,15 @@ class Count(Metric):
         return False
 
     def __str__(self):
-        return 'doc_count'
+        return "doc_count"
 
     def order_by_key(self):
-        return '_count'
+        return "_count"
 
 
 class Aggregate(Metric):
     def reference(self):
-        if hasattr(self, 'ref'):
+        if hasattr(self, "ref"):
             return self.ref
         return self.__class__.__name__.lower()
 
@@ -55,13 +53,13 @@ class Aggregate(Metric):
     def __str__(self):
         model = self.field.model.__name__.lower()
         op = self.__class__.__name__.lower()
-        return '{}__{}__{}'.format(model, self.field.key, op)
+        return f"{model}__{self.field.key}__{op}"
 
     def agg_params(self):
         params = {
-            'name': self.field.key,
-            'field': self.field.get_storage_field(),
-            'agg_type': self.reference(),
+            "name": self.field.key,
+            "field": self.field.get_storage_field(),
+            "agg_type": self.reference(),
         }
         return params
 
@@ -95,80 +93,82 @@ class Cardinality(Aggregate):
 
 
 class Histogram(Aggregate):
-    ref = 'histogram'
+    ref = "histogram"
 
     def agg_params(self):
-        params = super(Histogram, self).agg_params()
-        params.update({
-            'min_doc_count': 0,
-        })
+        params = super().agg_params()
+        params.update(
+            {
+                "min_doc_count": 0,
+            }
+        )
 
-        if 'min' in self.params and 'max' not in self.params:
-            raise MissingParameterException('cannot give min without max')
+        if "min" in self.params and "max" not in self.params:
+            raise MissingParameterException("cannot give min without max")
 
-        if 'max' in self.params and 'min' not in self.params:
-            raise MissingParameterException('cannot give max without min')
+        if "max" in self.params and "min" not in self.params:
+            raise MissingParameterException("cannot give max without min")
 
-        if 'min' in self.params and 'max' in self.params:
-            self.min = self.params.pop('min')
-            self.max = self.params.pop('max')
+        if "min" in self.params and "max" in self.params:
+            self.min = self.params.pop("min")
+            self.max = self.params.pop("max")
 
-            params['extended_bounds'] = {
-                'min': self.min,
-                'max': self.max,
+            params["extended_bounds"] = {
+                "min": self.min,
+                "max": self.max,
             }
 
         params.update(self.params)
 
-        if 'interval' not in params:
-            raise MissingParameterException('missing interval parameter')
+        if "interval" not in params:
+            raise MissingParameterException("missing interval parameter")
 
-        self.interval = params['interval']
+        self.interval = params["interval"]
 
         return params
 
 
 TIME_UNIT_CONVERSION = {
-    'd': 'days',
-    'day': 'days',
-    'H': 'hours',
-    'h': 'hours',
-    'hour': 'hours',
-    'm': 'minutes',
-    'minute': 'minutes',
-    's': 'seconds',
-    'second': 'seconds',
+    "d": "days",
+    "day": "days",
+    "H": "hours",
+    "h": "hours",
+    "hour": "hours",
+    "m": "minutes",
+    "minute": "minutes",
+    "s": "seconds",
+    "second": "seconds",
 }
 
 
 def is_interval_standard(interval):
-    for key, _ in TIME_UNIT_CONVERSION.items():
-        if interval.endswith(key):
-            return True
+    return any(interval.endswith(key) for key in TIME_UNIT_CONVERSION)
 
     return False
 
 
 def is_interval_yearly(interval):
     # Naive approach
-    return interval.endswith('y')
+    return interval.endswith("y")
 
 
 def is_interval_monthly(interval):
     # Naive approach
-    return interval.endswith('M')
+    return interval.endswith("M")
 
 
 def is_interval_weekly(interval):
     # Naive approach
-    return interval.endswith('w')
+    return interval.endswith("w")
 
 
 def is_interval_handled(interval):
-    return is_interval_standard(interval) or\
-           is_interval_weekly(interval) or\
-           is_interval_monthly(interval) or\
-           is_interval_yearly(interval)
+    return (
+        is_interval_standard(interval)
+        or is_interval_weekly(interval)
+        or is_interval_monthly(interval)
+        or is_interval_yearly(interval)
+    )
 
 
 def get_timedelta_from_interval(interval):
@@ -177,22 +177,24 @@ def get_timedelta_from_interval(interval):
         if interval.endswith(key):
             value = interval.rstrip(key)
             if not value:
-                value = '1'
+                value = "1"
 
-            return timedelta(**{
-                param: int(value),
-            })
+            return timedelta(
+                **{
+                    param: int(value),
+                }
+            )
 
     return None
 
 
 def get_timedelta_from_timestring(timestring):
-    if timestring.startswith('-'):
+    if timestring.startswith("-"):
         minus = True
-        timestring = timestring.lstrip('-')
-    elif timestring.startswith('+'):
+        timestring = timestring.lstrip("-")
+    elif timestring.startswith("+"):
         minus = False
-        timestring = timestring.lstrip('+')
+        timestring = timestring.lstrip("+")
     else:
         minus = False
 
@@ -211,8 +213,7 @@ def get_offset_date(d, timestring):
 
 def get_rounded_date_from_interval(d, interval):
     if is_interval_standard(interval):
-        return get_rounded_date_from_timedelta(
-            d, get_timedelta_from_interval(interval))
+        return get_rounded_date_from_timedelta(d, get_timedelta_from_interval(interval))
 
     if is_interval_weekly(interval):
         # Weekly intervals start on Monday
@@ -257,7 +258,7 @@ def get_rounded_date_from_timedelta(d, delta):
 
 
 class DateHistogram(Histogram):
-    ref = 'date_histogram'
+    ref = "date_histogram"
 
     def agg_params(self):
         agg_params = super().agg_params()
@@ -275,7 +276,7 @@ class DateHistogram(Histogram):
         return agg_params
 
     def choice_keys(self):
-        if not hasattr(self, 'min') or not hasattr(self, 'max'):
+        if not hasattr(self, "min") or not hasattr(self, "max"):
             return None
 
         if not is_interval_handled(self.interval):
@@ -283,8 +284,8 @@ class DateHistogram(Histogram):
 
         start = get_rounded_date_from_interval(self.min, self.interval)
         agg_params = self.agg_params()
-        if 'offset' in agg_params:
-            start = get_offset_date(start, agg_params['offset'])
+        if "offset" in agg_params:
+            start = get_offset_date(start, agg_params["offset"])
 
         end = self.max
 
@@ -315,7 +316,7 @@ class DateHistogram(Histogram):
         return choice_keys
 
     def _choice_keys_yearly(self, start, end, interval):
-        nb_years = int(interval.rstrip('y'))
+        nb_years = int(interval.rstrip("y"))
 
         choice_keys = []
         current = start
@@ -323,7 +324,7 @@ class DateHistogram(Histogram):
             choice_keys.append(current)
 
             next_ = current
-            for i in range(nb_years):
+            for _ in range(nb_years):
                 # 370 days to be sure to change year
                 next_ = next_ + timedelta(days=370)
                 next_ = next_.replace(day=current.day, month=current.month)
@@ -333,7 +334,7 @@ class DateHistogram(Histogram):
         return choice_keys
 
     def _choice_keys_monthly(self, start, end, interval):
-        nb_months = int(interval.rstrip('M'))
+        nb_months = int(interval.rstrip("M"))
 
         choice_keys = []
         current = start
@@ -341,7 +342,7 @@ class DateHistogram(Histogram):
             choice_keys.append(current)
 
             next_ = current
-            for i in range(nb_months):
+            for _ in range(nb_months):
                 # 32 days to be sure to change month
                 next_ = next_ + timedelta(days=32)
                 next_ = next_.replace(day=current.day)
@@ -351,7 +352,7 @@ class DateHistogram(Histogram):
         return choice_keys
 
     def _choice_keys_weekly(self, start, end, interval):
-        nb_weeks = int(interval.rstrip('w'))
+        nb_weeks = int(interval.rstrip("w"))
 
         choice_keys = []
         current = start
@@ -365,31 +366,31 @@ class DateHistogram(Histogram):
 
 
 class DateRange(Aggregate):
-    ref = 'date_range'
+    ref = "date_range"
 
     def agg_params(self):
-        params = super(DateRange, self).agg_params()
+        params = super().agg_params()
         params.update(self.params)
 
-        if 'ranges' not in params:
-            raise MissingParameterException('missing ranges parameter')
+        if "ranges" not in params:
+            raise MissingParameterException("missing ranges parameter")
 
         return params
 
     def _format_date(self, d):
         # We format the date like ES does
-        return d.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+        return d.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
     def _format_date_range(self, date_range):
-        start, end = date_range['from'], date_range['to']
-        return '{}-{}'.format(self._format_date(start), self._format_date(end))
+        start, end = date_range["from"], date_range["to"]
+        return "{}-{}".format(self._format_date(start), self._format_date(end))
 
     def choice_keys(self):
         keys = []
 
-        for date_range in self.params['ranges']:
-            if 'key' in date_range:
-                keys.append(date_range['key'])
+        for date_range in self.params["ranges"]:
+            if "key" in date_range:
+                keys.append(date_range["key"])
             else:
                 keys.append(self._format_date_range(date_range))
 
@@ -400,18 +401,16 @@ class DateRange(Aggregate):
 
 
 class ReverseNested(Metric):
-    def __init__(self, path_or_field_or_model,
-                 *expressions, **named_expressions):
-
+    def __init__(self, path_or_field_or_model, *expressions, **named_expressions):
         # /!\ named_expressions may not be correctly ordered
         if isinstance(path_or_field_or_model, str):
-            self.path = path_or_field_or_model or 'root'
+            self.path = path_or_field_or_model or "root"
 
         elif isinstance(path_or_field_or_model, Field):
             self.path = path_or_field_or_model.get_storage_field()
 
         elif issubclass(path_or_field_or_model, Model):
-            self.path = 'root'
+            self.path = "root"
 
         self._expressions = OrderedDict()
         for exp in expressions:
@@ -419,17 +418,17 @@ class ReverseNested(Metric):
         self._expressions.update(named_expressions)
 
     def __str__(self):
-        keys = '__'.join(self._expressions.keys())
-        return 'reverse_nested_{}__{}'.format(self.path, keys)
+        keys = "__".join(self._expressions.keys())
+        return f"reverse_nested_{self.path}__{keys}"
 
     def reverse_agg_params(self):
         params = {
-            'name': 'reverse_nested_{}'.format(self.path),
-            'agg_type': 'reverse_nested',
+            "name": f"reverse_nested_{self.path}",
+            "agg_type": "reverse_nested",
         }
 
-        if self.path != 'root':
-            params['path'] = self.path
+        if self.path != "root":
+            params["path"] = self.path
 
         return params
 
@@ -438,9 +437,7 @@ class ReverseNested(Metric):
 
     def configure_aggregations(self, agg):
         reverse_agg_params = self.reverse_agg_params()
-        reverse_nested_bucket = agg.bucket(
-            **reverse_agg_params
-        )
+        reverse_nested_bucket = agg.bucket(**reverse_agg_params)
 
         for key, expression in self._expressions.items():
             if expression.is_field_agg():
@@ -449,13 +446,13 @@ class ReverseNested(Metric):
                     key,
                     op,
                     field=expression.field.get_storage_field(),
-                    **expression.params
+                    **expression.params,
                 )
 
     @property
     def expressions(self):
         return {
-            'reverse_nested_{}__{}'.format(self.path, key): expression
+            f"reverse_nested_{self.path}__{key}": expression
             for key, expression in self._expressions.items()
         }
 
@@ -467,7 +464,7 @@ class ReverseNested(Metric):
                 continue
             line[key] = None
 
-        line['reverse_nested_{}__doc_count'.format(self.path)] = 0
+        line[f"reverse_nested_{self.path}__doc_count"] = 0
 
         return line
 
@@ -504,7 +501,7 @@ def div_or_none(a, b, percentage=False):
 
 
 def add_or_none(operands):
-    if any([op is None for op in operands]):
+    if any(op is None for op in operands):
         return None
     return sum(operands)
 
@@ -517,13 +514,13 @@ def sub_or_none(a, b):
 
 class Ratio(Operation):
     def __init__(self, dividend, divisor):
-        super(Ratio, self).__init__(dividend, divisor)
+        super().__init__(dividend, divisor)
 
         self.dividend = dividend
         self.divisor = divisor
 
     def __str__(self):
-        return '{}__div__{}'.format(self.dividend, self.divisor)
+        return f"{self.dividend}__div__{self.divisor}"
 
     def compute_one(self, row):
         dividend = row[str(self.dividend)]
@@ -538,7 +535,7 @@ class Ratio(Operation):
 
 class Addition(Operation):
     def __str__(self):
-        return '__add__'.join(['{}'.format(op) for op in self.operands])
+        return "__add__".join([f"{op}" for op in self.operands])
 
     def compute_one(self, row):
         keys = [str(op) for op in self.operands]
@@ -547,13 +544,13 @@ class Addition(Operation):
 
 class Subtraction(Operation):
     def __init__(self, minuend, subtraend):
-        super(Subtraction, self).__init__(minuend, subtraend)
+        super().__init__(minuend, subtraend)
 
         self.minuend = minuend
         self.subtraend = subtraend
 
     def __str__(self):
-        return '{}__sub__{}'.format(self.minuend, self.subtraend)
+        return f"{self.minuend}__sub__{self.subtraend}"
 
     def compute_one(self, row):
         key_a = str(self.minuend)

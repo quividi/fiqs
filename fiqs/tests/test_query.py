@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from collections import Counter
 from datetime import datetime
 
@@ -34,9 +32,15 @@ from fiqs.tests.conftest import load_output
 
 
 def test_one_metric():
-    expected = get_search().aggs.metric(
-        'total_sales', 'sum', field='price',
-    ).to_dict()
+    expected = (
+        get_search()
+        .aggs.metric(
+            "total_sales",
+            "sum",
+            field="price",
+        )
+        .to_dict()
+    )
 
     fquery = FQuery(get_search()).values(
         total_sales=Sum(Sale.price),
@@ -47,14 +51,24 @@ def test_one_metric():
 
 
 def test_one_aggregation():
-    expected = get_search().aggs.metric(
-        'shop_id', 'terms', field='shop_id',
-    ).to_dict()
+    expected = (
+        get_search()
+        .aggs.metric(
+            "shop_id",
+            "terms",
+            field="shop_id",
+        )
+        .to_dict()
+    )
 
-    fquery = FQuery(get_search()).values(
-        Count(Sale),
-    ).group_by(
-        Sale.shop_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            Count(Sale),
+        )
+        .group_by(
+            Sale.shop_id,
+        )
     )
     search = fquery._configure_search()
 
@@ -64,15 +78,23 @@ def test_one_aggregation():
 def test_one_aggregation_one_metric():
     search = get_search()
     search.aggs.bucket(
-        'shop_id', 'terms', field='shop_id',
+        "shop_id",
+        "terms",
+        field="shop_id",
     ).metric(
-        'total_sales', 'sum', field='price',
+        "total_sales",
+        "sum",
+        field="price",
     )
 
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        Sale.shop_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            Sale.shop_id,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -82,13 +104,19 @@ def test_one_aggregation_one_metric():
 def test_one_aggregation_count():
     search = get_search()
     search.aggs.bucket(
-        'shop_id', 'terms', field='shop_id',
+        "shop_id",
+        "terms",
+        field="shop_id",
     )
 
-    fquery = FQuery(get_search()).values(
-        Count(Sale),
-    ).group_by(
-        Sale.shop_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            Count(Sale),
+        )
+        .group_by(
+            Sale.shop_id,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -98,18 +126,28 @@ def test_one_aggregation_count():
 def test_two_aggregations_one_metric():
     search = get_search()
     search.aggs.bucket(
-        'shop_id', 'terms', field='shop_id',
+        "shop_id",
+        "terms",
+        field="shop_id",
     ).bucket(
-        'client_id', 'terms', field='client_id',
+        "client_id",
+        "terms",
+        field="client_id",
     ).metric(
-        'total_sales', 'sum', field='price',
+        "total_sales",
+        "sum",
+        field="price",
     )
 
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        Sale.shop_id,
-        Sale.client_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            Sale.shop_id,
+            Sale.client_id,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -119,18 +157,28 @@ def test_two_aggregations_one_metric():
 def test_one_aggregation_two_metrics():
     search = get_search()
     search.aggs.bucket(
-        'shop_id', 'terms', field='shop_id',
+        "shop_id",
+        "terms",
+        field="shop_id",
     ).metric(
-        'total_sales', 'sum', field='price',
+        "total_sales",
+        "sum",
+        field="price",
     ).metric(
-        'avg_sales', 'avg', field='price',
+        "avg_sales",
+        "avg",
+        field="price",
     )
 
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-        avg_sales=Avg(Sale.price),
-    ).group_by(
-        Sale.shop_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+            avg_sales=Avg(Sale.price),
+        )
+        .group_by(
+            Sale.shop_id,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -140,92 +188,112 @@ def test_one_aggregation_two_metrics():
 def test_two_aggregations_two_metrics():
     search = get_search()
     search.aggs.bucket(
-        'shop_id', 'terms', field='shop_id',
+        "shop_id",
+        "terms",
+        field="shop_id",
     ).bucket(
-        'client_id', 'terms', field='client_id',
+        "client_id",
+        "terms",
+        field="client_id",
     ).metric(
-        'total_sales', 'sum', field='price',
+        "total_sales",
+        "sum",
+        field="price",
     ).metric(
-        'avg_sales', 'avg', field='price',
+        "avg_sales",
+        "avg",
+        field="price",
     )
 
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-        avg_sales=Avg(Sale.price),
-    ).group_by(
-        Sale.shop_id,
-        Sale.client_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+            avg_sales=Avg(Sale.price),
+        )
+        .group_by(
+            Sale.shop_id,
+            Sale.client_id,
+        )
     )
     fsearch = fquery._configure_search()
 
     assert search.to_dict() == fsearch.to_dict()
 
 
-@pytest.mark.parametrize('hmin,hmax', [
-    (0, 1000),
-    (None, None),
-])
+@pytest.mark.parametrize(
+    "hmin,hmax",
+    [
+        (0, 1000),
+        (None, None),
+    ],
+)
 def test_histogram(hmin, hmax):
     histogram_params = {
-        'field': 'price',
-        'interval': 100,
-        'min_doc_count': 0,
+        "field": "price",
+        "interval": 100,
+        "min_doc_count": 0,
     }
     if hmin is not None:
-        histogram_params.setdefault('extended_bounds', {})
-        histogram_params['extended_bounds']['min'] = hmin
+        histogram_params.setdefault("extended_bounds", {})
+        histogram_params["extended_bounds"]["min"] = hmin
     if hmax is not None:
-        histogram_params.setdefault('extended_bounds', {})
-        histogram_params['extended_bounds']['max'] = hmax
+        histogram_params.setdefault("extended_bounds", {})
+        histogram_params["extended_bounds"]["max"] = hmax
 
     search = get_search()
-    search.aggs.bucket(
-        'price', 'histogram', **histogram_params
-    ).metric(
-        'total_sales', 'sum', field='price',
+    search.aggs.bucket("price", "histogram", **histogram_params).metric(
+        "total_sales",
+        "sum",
+        field="price",
     )
 
     histogram_params = {
-        'interval': 100,
+        "interval": 100,
     }
     if hmin is not None:
-        histogram_params['min'] = hmin
+        histogram_params["min"] = hmin
     if hmax is not None:
-        histogram_params['max'] = hmax
+        histogram_params["max"] = hmax
 
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        Histogram(
-            Sale.price,
-            **histogram_params
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            Histogram(Sale.price, **histogram_params),
+        )
     )
     fsearch = fquery._configure_search()
 
     assert search.to_dict() == fsearch.to_dict()
 
 
-@pytest.mark.parametrize('hmin,hmax', [
-    (None, 1000),
-    (100, None),
-])
+@pytest.mark.parametrize(
+    "hmin,hmax",
+    [
+        (None, 1000),
+        (100, None),
+    ],
+)
 def test_histogram_incomplete_extended_bounds(hmin, hmax):
     histogram_params = {
-        'interval': 100,
+        "interval": 100,
     }
     if hmin is not None:
-        histogram_params['min'] = hmin
+        histogram_params["min"] = hmin
     if hmax is not None:
-        histogram_params['max'] = hmax
+        histogram_params["max"] = hmax
 
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        Histogram(
-            Sale.price,
-            **histogram_params
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            Histogram(Sale.price, **histogram_params),
+        )
     )
     with pytest.raises(MissingParameterException):
         fquery._configure_search()
@@ -236,31 +304,35 @@ def test_date_histogram():
     end = datetime(2016, 1, 31)
 
     date_histogram_params = {
-        'field': 'timestamp',
-        'interval': '1d',
-        'min_doc_count': 0,
-        'extended_bounds': {
-            'min': start,
-            'max': end,
+        "field": "timestamp",
+        "calendar_interval": "1d",
+        "min_doc_count": 0,
+        "extended_bounds": {
+            "min": start,
+            "max": end,
         },
     }
 
     search = get_search()
-    search.aggs.bucket(
-        'timestamp', 'date_histogram', **date_histogram_params
-    ).metric(
-        'total_sales', 'sum', field='price',
+    search.aggs.bucket("timestamp", "date_histogram", **date_histogram_params).metric(
+        "total_sales",
+        "sum",
+        field="price",
     )
 
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        DateHistogram(
-            Sale.timestamp,
-            interval='1d',
-            min=start,
-            max=end,
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            DateHistogram(
+                Sale.timestamp,
+                interval="1d",
+                min=start,
+                max=end,
+            ),
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -272,31 +344,35 @@ def test_date_histogram_month():
     end = datetime(2016, 6, 1)
 
     date_histogram_params = {
-        'field': 'timestamp',
-        'interval': '1M',
-        'min_doc_count': 0,
-        'extended_bounds': {
-            'min': start,
-            'max': end,
+        "field": "timestamp",
+        "calendar_interval": "1M",
+        "min_doc_count": 0,
+        "extended_bounds": {
+            "min": start,
+            "max": end,
         },
     }
 
     search = get_search()
-    search.aggs.bucket(
-        'timestamp', 'date_histogram', **date_histogram_params
-    ).metric(
-        'total_sales', 'sum', field='price',
+    search.aggs.bucket("timestamp", "date_histogram", **date_histogram_params).metric(
+        "total_sales",
+        "sum",
+        field="price",
     )
 
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        DateHistogram(
-            Sale.timestamp,
-            interval='1M',
-            min=start,
-            max=end,
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            DateHistogram(
+                Sale.timestamp,
+                interval="1M",
+                min=start,
+                max=end,
+            ),
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -306,18 +382,28 @@ def test_date_histogram_month():
 def test_one_nested_aggregation_one_metric():
     search = get_search()
     search.aggs.bucket(
-        'products', 'nested', path='products',
+        "products",
+        "nested",
+        path="products",
     ).bucket(
-        'product_type', 'terms', field='products.product_type',
+        "product_type",
+        "terms",
+        field="products.product_type",
     ).metric(
-        'avg_product_price', 'avg', field='products.product_price',
+        "avg_product_price",
+        "avg",
+        field="products.product_price",
     )
 
-    fquery = FQuery(get_search()).values(
-        avg_product_price=Avg(Sale.product_price),
-    ).group_by(
-        Sale.products,
-        Sale.product_type,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            avg_product_price=Avg(Sale.product_price),
+        )
+        .group_by(
+            Sale.products,
+            Sale.product_type,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -327,24 +413,38 @@ def test_one_nested_aggregation_one_metric():
 def test_two_nested_aggregations_one_metric():
     search = get_search()
     search.aggs.bucket(
-        'products', 'nested', path='products',
+        "products",
+        "nested",
+        path="products",
     ).bucket(
-        'product_id', 'terms', field='products.product_id',
+        "product_id",
+        "terms",
+        field="products.product_id",
     ).bucket(
-        'parts', 'nested', path='products.parts',
+        "parts",
+        "nested",
+        path="products.parts",
     ).bucket(
-        'part_id', 'terms', field='products.parts.part_id',
+        "part_id",
+        "terms",
+        field="products.parts.part_id",
     ).metric(
-        'avg_part_price', 'avg', field='products.parts.part_price',
+        "avg_part_price",
+        "avg",
+        field="products.parts.part_price",
     )
 
-    fquery = FQuery(get_search()).values(
-        avg_part_price=Avg(Sale.part_price),
-    ).group_by(
-        Sale.products,
-        Sale.product_id,
-        Sale.parts,
-        Sale.part_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            avg_part_price=Avg(Sale.part_price),
+        )
+        .group_by(
+            Sale.products,
+            Sale.product_id,
+            Sale.parts,
+            Sale.part_id,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -355,22 +455,36 @@ def test_nested_parent_automatically_added():
     """Need to add one parent for each group_by key"""
     search = get_search()
     search.aggs.bucket(
-        'products', 'nested', path='products',
+        "products",
+        "nested",
+        path="products",
     ).bucket(
-        'product_id', 'terms', field='products.product_id',
+        "product_id",
+        "terms",
+        field="products.product_id",
     ).bucket(
-        'parts', 'nested', path='products.parts',
+        "parts",
+        "nested",
+        path="products.parts",
     ).bucket(
-        'part_id', 'terms', field='products.parts.part_id',
+        "part_id",
+        "terms",
+        field="products.parts.part_id",
     ).metric(
-        'avg_part_price', 'avg', field='products.parts.part_price',
+        "avg_part_price",
+        "avg",
+        field="products.parts.part_price",
     )
 
-    fquery = FQuery(get_search()).values(
-        avg_part_price=Avg(Sale.part_price),
-    ).group_by(
-        Sale.product_id,
-        Sale.part_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            avg_part_price=Avg(Sale.part_price),
+        )
+        .group_by(
+            Sale.product_id,
+            Sale.part_id,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -381,19 +495,31 @@ def test_nested_parent_automatically_added_2():
     """Need to add multiple parents for one group_by key"""
     search = get_search()
     search.aggs.bucket(
-        'products', 'nested', path='products',
+        "products",
+        "nested",
+        path="products",
     ).bucket(
-        'parts', 'nested', path='products.parts',
+        "parts",
+        "nested",
+        path="products.parts",
     ).bucket(
-        'part_id', 'terms', field='products.parts.part_id',
+        "part_id",
+        "terms",
+        field="products.parts.part_id",
     ).metric(
-        'avg_part_price', 'avg', field='products.parts.part_price',
+        "avg_part_price",
+        "avg",
+        field="products.parts.part_price",
     )
 
-    fquery = FQuery(get_search()).values(
-        avg_part_price=Avg(Sale.part_price),
-    ).group_by(
-        Sale.part_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            avg_part_price=Avg(Sale.part_price),
+        )
+        .group_by(
+            Sale.part_id,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -404,20 +530,32 @@ def test_nested_parent_automatically_added_3():
     """Should this work differently? Can it?"""
     search = get_search()
     search.aggs.bucket(
-        'products', 'nested', path='products',
+        "products",
+        "nested",
+        path="products",
     ).bucket(
-        'product_id', 'terms', field='products.product_id',
+        "product_id",
+        "terms",
+        field="products.product_id",
     ).bucket(
-        'parts', 'nested', path='products.parts',
+        "parts",
+        "nested",
+        path="products.parts",
     ).metric(
-        'avg_part_price', 'avg', field='products.parts.part_price',
+        "avg_part_price",
+        "avg",
+        field="products.parts.part_price",
     )
 
-    fquery = FQuery(get_search()).values(
-        avg_part_price=Avg(Sale.part_price),
-    ).group_by(
-        Sale.product_id,
-        Sale.parts,  # Can we get rid of this?
+    fquery = (
+        FQuery(get_search())
+        .values(
+            avg_part_price=Avg(Sale.part_price),
+        )
+        .group_by(
+            Sale.product_id,
+            Sale.parts,  # Can we get rid of this?
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -427,17 +565,27 @@ def test_nested_parent_automatically_added_3():
 def test_nested_parent_automatically_added_4():
     search = get_search()
     search.aggs.bucket(
-        'products', 'nested', path='products',
+        "products",
+        "nested",
+        path="products",
     ).bucket(
-        'product_id', 'terms', field='products.product_id',
+        "product_id",
+        "terms",
+        field="products.product_id",
     ).metric(
-        'avg_part_price', 'avg', field='products.parts.part_price',
+        "avg_part_price",
+        "avg",
+        field="products.parts.part_price",
     )
 
-    fquery = FQuery(get_search()).values(
-        avg_part_price=Avg(Sale.part_price),
-    ).group_by(
-        FieldWithChoices(Sale.product_id, choices=[]),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            avg_part_price=Avg(Sale.part_price),
+        )
+        .group_by(
+            FieldWithChoices(Sale.product_id, choices=[]),
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -447,22 +595,33 @@ def test_nested_parent_automatically_added_4():
 def test_reverse_nested_aggregation():
     search = get_search()
     search.aggs.bucket(
-        'products', 'nested', path='products',
+        "products",
+        "nested",
+        path="products",
     ).bucket(
-        'product_id', 'terms', field='products.product_id',
+        "product_id",
+        "terms",
+        field="products.product_id",
     ).bucket(
-        'reverse_nested_root', 'reverse_nested',
+        "reverse_nested_root",
+        "reverse_nested",
     ).metric(
-        'avg_price', 'avg', field='price',
+        "avg_price",
+        "avg",
+        field="price",
     )
 
-    fquery = FQuery(get_search()).values(
-        ReverseNested(
-            Sale,
-            avg_price=Avg(Sale.price),
-        ),
-    ).group_by(
-        Sale.product_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            ReverseNested(
+                Sale,
+                avg_price=Avg(Sale.price),
+            ),
+        )
+        .group_by(
+            Sale.product_id,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -472,27 +631,40 @@ def test_reverse_nested_aggregation():
 def test_reverse_nested_aggregation_2():
     search = get_search()
     product_id_bucket = search.aggs.bucket(
-        'products', 'nested', path='products',
+        "products",
+        "nested",
+        path="products",
     ).bucket(
-        'product_id', 'terms', field='products.product_id',
+        "product_id",
+        "terms",
+        field="products.product_id",
     )
     product_id_bucket.metric(
-        'avg_product_price', 'avg', field='products.product_price',
+        "avg_product_price",
+        "avg",
+        field="products.product_price",
     )
     product_id_bucket.bucket(
-        'reverse_nested_root', 'reverse_nested',
+        "reverse_nested_root",
+        "reverse_nested",
     ).metric(
-        'avg_price', 'avg', field='price',
+        "avg_price",
+        "avg",
+        field="price",
     )
 
-    fquery = FQuery(get_search()).values(
-        ReverseNested(
-            Sale,
-            avg_price=Avg(Sale.price),
-        ),
-        avg_product_price=Avg(Sale.product_price),
-    ).group_by(
-        Sale.product_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            ReverseNested(
+                Sale,
+                avg_price=Avg(Sale.price),
+            ),
+            avg_product_price=Avg(Sale.product_price),
+        )
+        .group_by(
+            Sale.product_id,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -502,20 +674,29 @@ def test_reverse_nested_aggregation_2():
 def test_reverse_nested_aggregation_doc_count():
     search = get_search()
     search.aggs.bucket(
-        'products', 'nested', path='products',
+        "products",
+        "nested",
+        path="products",
     ).bucket(
-        'product_id', 'terms', field='products.product_id',
+        "product_id",
+        "terms",
+        field="products.product_id",
     ).bucket(
-        'reverse_nested_root', 'reverse_nested',
+        "reverse_nested_root",
+        "reverse_nested",
     )
 
-    fquery = FQuery(get_search()).values(
-        ReverseNested(
-            Sale,
-            Count(Sale),
-        ),
-    ).group_by(
-        Sale.product_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            ReverseNested(
+                Sale,
+                Count(Sale),
+            ),
+        )
+        .group_by(
+            Sale.product_id,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -525,25 +706,38 @@ def test_reverse_nested_aggregation_doc_count():
 def test_reverse_nested_aggregation_doc_count_2():
     search = get_search()
     search.aggs.bucket(
-        'products', 'nested', path='products',
+        "products",
+        "nested",
+        path="products",
     ).bucket(
-        'product_id', 'terms', field='products.product_id',
+        "product_id",
+        "terms",
+        field="products.product_id",
     ).bucket(
-        'parts', 'nested', path='products.parts',
+        "parts",
+        "nested",
+        path="products.parts",
     ).bucket(
-        'part_id', 'terms', field='products.parts.part_id',
+        "part_id",
+        "terms",
+        field="products.parts.part_id",
     ).bucket(
-        'reverse_nested_root', 'reverse_nested',
+        "reverse_nested_root",
+        "reverse_nested",
     )
 
-    fquery = FQuery(get_search()).values(
-        ReverseNested(
-            Sale,
-            Count(Sale),
-        ),
-    ).group_by(
-        Sale.product_id,
-        Sale.part_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            ReverseNested(
+                Sale,
+                Count(Sale),
+            ),
+        )
+        .group_by(
+            Sale.product_id,
+            Sale.part_id,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -553,25 +747,39 @@ def test_reverse_nested_aggregation_doc_count_2():
 def test_reverse_nested_aggregation_doc_count_path():
     search = get_search()
     search.aggs.bucket(
-        'products', 'nested', path='products',
+        "products",
+        "nested",
+        path="products",
     ).bucket(
-        'product_id', 'terms', field='products.product_id',
+        "product_id",
+        "terms",
+        field="products.product_id",
     ).bucket(
-        'parts', 'nested', path='products.parts',
+        "parts",
+        "nested",
+        path="products.parts",
     ).bucket(
-        'part_id', 'terms', field='products.parts.part_id',
+        "part_id",
+        "terms",
+        field="products.parts.part_id",
     ).bucket(
-        'reverse_nested_products', 'reverse_nested', path='products',
+        "reverse_nested_products",
+        "reverse_nested",
+        path="products",
     )
 
-    fquery = FQuery(get_search()).values(
-        ReverseNested(
-            'products',
-            Count(Sale.products),
-        ),
-    ).group_by(
-        Sale.product_id,
-        Sale.part_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            ReverseNested(
+                "products",
+                Count(Sale.products),
+            ),
+        )
+        .group_by(
+            Sale.product_id,
+            Sale.part_id,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -581,25 +789,39 @@ def test_reverse_nested_aggregation_doc_count_path():
 def test_reverse_nested_aggregation_doc_count_path_2():
     search = get_search()
     search.aggs.bucket(
-        'products', 'nested', path='products',
+        "products",
+        "nested",
+        path="products",
     ).bucket(
-        'product_id', 'terms', field='products.product_id',
+        "product_id",
+        "terms",
+        field="products.product_id",
     ).bucket(
-        'parts', 'nested', path='products.parts',
+        "parts",
+        "nested",
+        path="products.parts",
     ).bucket(
-        'part_id', 'terms', field='products.parts.part_id',
+        "part_id",
+        "terms",
+        field="products.parts.part_id",
     ).bucket(
-        'reverse_nested_products', 'reverse_nested', path='products',
+        "reverse_nested_products",
+        "reverse_nested",
+        path="products",
     )
 
-    fquery = FQuery(get_search()).values(
-        ReverseNested(
-            Sale.products,
-            Count(Sale.products),
-        ),
-    ).group_by(
-        Sale.product_id,
-        Sale.part_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            ReverseNested(
+                Sale.products,
+                Count(Sale.products),
+            ),
+        )
+        .group_by(
+            Sale.product_id,
+            Sale.part_id,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -609,18 +831,30 @@ def test_reverse_nested_aggregation_doc_count_path_2():
 def test_default_size():
     search = get_search()
     search.aggs.bucket(
-        'shop_id', 'terms', field='shop_id', size=5,
+        "shop_id",
+        "terms",
+        field="shop_id",
+        size=5,
     ).bucket(
-        'client_id', 'terms', field='client_id', size=5,
+        "client_id",
+        "terms",
+        field="client_id",
+        size=5,
     ).metric(
-        'total_sales', 'sum', field='price',
+        "total_sales",
+        "sum",
+        field="price",
     )
 
-    fquery = FQuery(get_search(), default_size=5).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        Sale.shop_id,
-        Sale.client_id,
+    fquery = (
+        FQuery(get_search(), default_size=5)
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            Sale.shop_id,
+            Sale.client_id,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -630,18 +864,30 @@ def test_default_size():
 def test_agg_size_overrides_default_size():
     search = get_search()
     search.aggs.bucket(
-        'shop_id', 'terms', field='shop_id', size=2,
+        "shop_id",
+        "terms",
+        field="shop_id",
+        size=2,
     ).bucket(
-        'client_id', 'terms', field='client_id', size=5,
+        "client_id",
+        "terms",
+        field="client_id",
+        size=5,
     ).metric(
-        'total_sales', 'sum', field='price',
+        "total_sales",
+        "sum",
+        field="price",
     )
 
-    fquery = FQuery(get_search(), default_size=5).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        DataExtendedField(Sale.shop_id, size=2),
-        Sale.client_id,
+    fquery = (
+        FQuery(get_search(), default_size=5)
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            DataExtendedField(Sale.shop_id, size=2),
+            Sale.client_id,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -651,18 +897,30 @@ def test_agg_size_overrides_default_size():
 def test_default_size_with_choices():
     search = get_search()
     search.aggs.bucket(
-        'shop_id', 'terms', field='shop_id', size=5,
+        "shop_id",
+        "terms",
+        field="shop_id",
+        size=5,
     ).bucket(
-        'client_id', 'terms', field='client_id', size=5,
+        "client_id",
+        "terms",
+        field="client_id",
+        size=5,
     ).metric(
-        'total_sales', 'sum', field='price',
+        "total_sales",
+        "sum",
+        field="price",
     )
 
-    fquery = FQuery(get_search(), default_size=5).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        FieldWithChoices(Sale.shop_id, choices=range(1, 5)),
-        Sale.client_id,
+    fquery = (
+        FQuery(get_search(), default_size=5)
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            FieldWithChoices(Sale.shop_id, choices=range(1, 5)),
+            Sale.client_id,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -672,18 +930,29 @@ def test_default_size_with_choices():
 def test_aggregation_size():
     search = get_search()
     search.aggs.bucket(
-        'shop_id', 'terms', field='shop_id', size=5,
+        "shop_id",
+        "terms",
+        field="shop_id",
+        size=5,
     ).bucket(
-        'client_id', 'terms', field='client_id',
+        "client_id",
+        "terms",
+        field="client_id",
     ).metric(
-        'total_sales', 'sum', field='price',
+        "total_sales",
+        "sum",
+        field="price",
     )
 
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        DataExtendedField(Sale.shop_id, size=5),
-        Sale.client_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            DataExtendedField(Sale.shop_id, size=5),
+            Sale.client_id,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -692,28 +961,34 @@ def test_aggregation_size():
 
 def test_size_ignored_by_grouped_field():
     shops_by_country = {
-        'country_a': range(1, 6),
-        'country_b': range(6, 11),
+        "country_a": range(1, 6),
+        "country_b": range(6, 11),
     }
     filters = {}
     for country, shop_ids in shops_by_country.items():
         filters[country] = {
-            'terms': {'shop_id': shop_ids},
+            "terms": {"shop_id": shop_ids},
         }
 
     # Default size is ignored for grouped fields
     search = get_search()
     search.aggs.metric(
-        'shop_id', 'filters', filters=filters,
+        "shop_id",
+        "filters",
+        filters=filters,
     )
 
-    fquery = FQuery(get_search(), default_size=5).values(
-        Count(Sale),
-    ).group_by(
-        GroupedField(
-            Sale.shop_id,
-            groups=shops_by_country,
-        ),
+    fquery = (
+        FQuery(get_search(), default_size=5)
+        .values(
+            Count(Sale),
+        )
+        .group_by(
+            GroupedField(
+                Sale.shop_id,
+                groups=shops_by_country,
+            ),
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -722,19 +997,28 @@ def test_size_ignored_by_grouped_field():
     # It is still applied on other aggregations though
     search = get_search()
     search.aggs.bucket(
-        'payment_type', 'terms', field='payment_type', size=5,
+        "payment_type",
+        "terms",
+        field="payment_type",
+        size=5,
     ).metric(
-        'shop_id', 'filters', filters=filters,
+        "shop_id",
+        "filters",
+        filters=filters,
     )
 
-    fquery = FQuery(get_search(), default_size=5).values(
-        Count(Sale),
-    ).group_by(
-        Sale.payment_type,
-        GroupedField(
-            Sale.shop_id,
-            groups=shops_by_country,
-        ),
+    fquery = (
+        FQuery(get_search(), default_size=5)
+        .values(
+            Count(Sale),
+        )
+        .group_by(
+            Sale.payment_type,
+            GroupedField(
+                Sale.shop_id,
+                groups=shops_by_country,
+            ),
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -744,31 +1028,41 @@ def test_size_ignored_by_grouped_field():
 def test_ranges():
     ranges = [
         {
-            'to': 4,
-            'key': 'first_three',
+            "to": 4,
+            "key": "first_three",
         },
         {
-            'from': 4,
-            'to': 7,
-            'key': 'next_three',
+            "from": 4,
+            "to": 7,
+            "key": "next_three",
         },
         {
-            'from': 7,
-            'key': 'last_four',
+            "from": 7,
+            "key": "last_four",
         },
     ]
 
     search = get_search()
     search.aggs.bucket(
-        'shop_id', 'range', field='shop_id', ranges=ranges, keyed=True,
+        "shop_id",
+        "range",
+        field="shop_id",
+        ranges=ranges,
+        keyed=True,
     ).metric(
-        'total_sales', 'sum', field='price',
+        "total_sales",
+        "sum",
+        field="price",
     )
 
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        DataExtendedField(Sale.shop_id, ranges=ranges),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            DataExtendedField(Sale.shop_id, ranges=ranges),
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -779,27 +1073,33 @@ def test_ranges_2():
     # Ranges can also be given as a list of tuples
     ranges = [
         {
-            'from': 1,
-            'to': 4,
-            'key': '1 - 4',
+            "from": 1,
+            "to": 4,
+            "key": "1 - 4",
         },
         {
-            'from': 4,
-            'to': 7,
-            'key': '4 - 7',
+            "from": 4,
+            "to": 7,
+            "key": "4 - 7",
         },
         {
-            'from': 7,
-            'to': 11,
-            'key': '7 - 11',
+            "from": 7,
+            "to": 11,
+            "key": "7 - 11",
         },
     ]
 
     search = get_search()
     search.aggs.bucket(
-        'shop_id', 'range', field='shop_id', ranges=ranges, keyed=True,
+        "shop_id",
+        "range",
+        field="shop_id",
+        ranges=ranges,
+        keyed=True,
     ).metric(
-        'total_sales', 'sum', field='price',
+        "total_sales",
+        "sum",
+        field="price",
     )
 
     ranges_as_list = [
@@ -808,10 +1108,14 @@ def test_ranges_2():
         (7, 11),
     ]
 
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        DataExtendedField(Sale.shop_id, ranges=ranges_as_list),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            DataExtendedField(Sale.shop_id, ranges=ranges_as_list),
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -820,25 +1124,28 @@ def test_ranges_2():
 
 def test_order_by():
     expected = {
-        'aggs': {
-            'shop_id': {
-                'aggs': {
-                    'total_sales': {'sum': {'field': 'price'}},
+        "aggs": {
+            "shop_id": {
+                "aggs": {
+                    "total_sales": {"sum": {"field": "price"}},
                 },
-                'terms': {
-                    'field': 'shop_id',
-                    'order': {'total_sales': 'desc'},
-                }
+                "terms": {
+                    "field": "shop_id",
+                    "order": {"total_sales": "desc"},
+                },
             }
         },
     }
 
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        Sale.shop_id,
-    ).order_by(
-        {'total_sales': 'desc'}
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            Sale.shop_id,
+        )
+        .order_by({"total_sales": "desc"})
     )
     fsearch = fquery._configure_search()
 
@@ -847,31 +1154,34 @@ def test_order_by():
 
 def test_order_by_multiple_group_by():
     expected = {
-        'aggs': {
-            'shop_id': {
-                'aggs': {
-                    'client_id': {
-                        'aggs': {
-                            'total_sales': {'sum': {'field': 'price'}},
+        "aggs": {
+            "shop_id": {
+                "aggs": {
+                    "client_id": {
+                        "aggs": {
+                            "total_sales": {"sum": {"field": "price"}},
                         },
-                        'terms': {
-                            'field': 'client_id',
-                            'order': {'total_sales': 'desc'},
+                        "terms": {
+                            "field": "client_id",
+                            "order": {"total_sales": "desc"},
                         },
                     },
                 },
-                'terms': {'field': 'shop_id'},
+                "terms": {"field": "shop_id"},
             },
         },
     }
 
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        Sale.shop_id,
-        Sale.client_id,
-    ).order_by(
-        {'total_sales': 'desc'}
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            Sale.shop_id,
+            Sale.client_id,
+        )
+        .order_by({"total_sales": "desc"})
     )
     fsearch = fquery._configure_search()
 
@@ -880,25 +1190,28 @@ def test_order_by_multiple_group_by():
 
 def test_order_by_field_with_choices():
     expected = {
-        'aggs': {
-            'payment_type': {
-                'aggs': {
-                    'total_sales': {'sum': {'field': 'price'}},
+        "aggs": {
+            "payment_type": {
+                "aggs": {
+                    "total_sales": {"sum": {"field": "price"}},
                 },
-                'terms': {
-                    'field': 'payment_type',
-                    'order': {'total_sales': 'desc'},
-                }
+                "terms": {
+                    "field": "payment_type",
+                    "order": {"total_sales": "desc"},
+                },
             }
         },
     }
 
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        Sale.payment_type,
-    ).order_by(
-        {'total_sales': 'desc'}
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            Sale.payment_type,
+        )
+        .order_by({"total_sales": "desc"})
     )
     fsearch = fquery._configure_search()
 
@@ -912,53 +1225,67 @@ def test_order_by_count():
 def test_computed_automatically_added():
     search = get_search()
     search.aggs.bucket(
-        'shop_id', 'terms', field='shop_id',
+        "shop_id",
+        "terms",
+        field="shop_id",
     ).metric(
         str(Sum(TrafficCount.incoming_traffic)),
-        'sum',
-        field='incoming_traffic',
+        "sum",
+        field="incoming_traffic",
     ).metric(
         str(Sum(TrafficCount.outgoing_traffic)),
-        'sum',
-        field='outgoing_traffic',
+        "sum",
+        field="outgoing_traffic",
     )
 
-    fquery = FQuery(get_search()).values(
-        Addition(
-            Sum(TrafficCount.incoming_traffic),
-            Sum(TrafficCount.outgoing_traffic),
-        ),
-        Sum(TrafficCount.incoming_traffic),
-        Sum(TrafficCount.outgoing_traffic),
-    ).group_by(
-        TrafficCount.shop_id,
-    )
-    fsearch = fquery._configure_search()
-
-    assert fsearch.to_dict() == search.to_dict()
-
-    fquery = FQuery(get_search()).values(
-        Addition(
-            Sum(TrafficCount.incoming_traffic),
-            Sum(TrafficCount.outgoing_traffic),
-        ),
-    ).group_by(
-        TrafficCount.shop_id,
-    )
-    fsearch = fquery._configure_search()
-
-    assert fsearch.to_dict() == search.to_dict()
-
-    fquery = FQuery(get_search()).values(
-        Ratio(
-            Sum(TrafficCount.incoming_traffic),
+    fquery = (
+        FQuery(get_search())
+        .values(
             Addition(
                 Sum(TrafficCount.incoming_traffic),
                 Sum(TrafficCount.outgoing_traffic),
             ),
-        ),
-    ).group_by(
-        TrafficCount.shop_id,
+            Sum(TrafficCount.incoming_traffic),
+            Sum(TrafficCount.outgoing_traffic),
+        )
+        .group_by(
+            TrafficCount.shop_id,
+        )
+    )
+    fsearch = fquery._configure_search()
+
+    assert fsearch.to_dict() == search.to_dict()
+
+    fquery = (
+        FQuery(get_search())
+        .values(
+            Addition(
+                Sum(TrafficCount.incoming_traffic),
+                Sum(TrafficCount.outgoing_traffic),
+            ),
+        )
+        .group_by(
+            TrafficCount.shop_id,
+        )
+    )
+    fsearch = fquery._configure_search()
+
+    assert fsearch.to_dict() == search.to_dict()
+
+    fquery = (
+        FQuery(get_search())
+        .values(
+            Ratio(
+                Sum(TrafficCount.incoming_traffic),
+                Addition(
+                    Sum(TrafficCount.incoming_traffic),
+                    Sum(TrafficCount.outgoing_traffic),
+                ),
+            ),
+        )
+        .group_by(
+            TrafficCount.shop_id,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -968,7 +1295,9 @@ def test_computed_automatically_added():
 def test_cardinality():
     search = get_search()
     search.aggs.metric(
-        'nb_shops', 'cardinality', field='shop_id',
+        "nb_shops",
+        "cardinality",
+        field="shop_id",
     )
 
     fquery = FQuery(get_search()).values(
@@ -981,27 +1310,33 @@ def test_cardinality():
 
 def test_filters_aggregation():
     shops_by_country = {
-        'country_a': range(1, 6),
-        'country_b': range(6, 11),
+        "country_a": range(1, 6),
+        "country_b": range(6, 11),
     }
 
     filters = {}
     for country, shop_ids in shops_by_country.items():
         filters[country] = {
-            'terms': {'shop_id': shop_ids},
+            "terms": {"shop_id": shop_ids},
         }
     search = get_search()
     search.aggs.metric(
-        'shop_id', 'filters', filters=filters,
+        "shop_id",
+        "filters",
+        filters=filters,
     )
 
-    fquery = FQuery(get_search()).values(
-        Count(Sale),
-    ).group_by(
-        GroupedField(
-            Sale.shop_id,
-            groups=shops_by_country,
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            Count(Sale),
+        )
+        .group_by(
+            GroupedField(
+                Sale.shop_id,
+                groups=shops_by_country,
+            ),
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -1010,31 +1345,39 @@ def test_filters_aggregation():
 
 def test_filters_aggregation_multiple_aggregations():
     shops_by_country = {
-        'country_a': range(1, 6),
-        'country_b': range(6, 11),
+        "country_a": range(1, 6),
+        "country_b": range(6, 11),
     }
     filters = {
         country: {
-            'terms': {'shop_id': shop_ids},
+            "terms": {"shop_id": shop_ids},
         }
         for country, shop_ids in shops_by_country.items()
     }
 
     search = get_search()
     search.aggs.bucket(
-        'payment_type', 'terms', field='payment_type',
+        "payment_type",
+        "terms",
+        field="payment_type",
     ).bucket(
-        'shop_id', 'filters', filters=filters,
+        "shop_id",
+        "filters",
+        filters=filters,
     )
 
-    fquery = FQuery(get_search()).values(
-        Count(Sale),
-    ).group_by(
-        Sale.payment_type,
-        GroupedField(
-            Sale.shop_id,
-            groups=shops_by_country,
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            Count(Sale),
+        )
+        .group_by(
+            Sale.payment_type,
+            GroupedField(
+                Sale.shop_id,
+                groups=shops_by_country,
+            ),
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -1043,19 +1386,27 @@ def test_filters_aggregation_multiple_aggregations():
     # We switch the order, for fun.
     search = get_search()
     search.aggs.bucket(
-        'shop_id', 'filters', filters=filters,
+        "shop_id",
+        "filters",
+        filters=filters,
     ).bucket(
-        'payment_type', 'terms', field='payment_type',
+        "payment_type",
+        "terms",
+        field="payment_type",
     )
 
-    fquery = FQuery(get_search()).values(
-        Count(Sale),
-    ).group_by(
-        GroupedField(
-            Sale.shop_id,
-            groups=shops_by_country,
-        ),
-        Sale.payment_type,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            Count(Sale),
+        )
+        .group_by(
+            GroupedField(
+                Sale.shop_id,
+                groups=shops_by_country,
+            ),
+            Sale.payment_type,
+        )
     )
     fsearch = fquery._configure_search()
 
@@ -1066,114 +1417,130 @@ def test_filters_aggregation_multiple_aggregations():
 # Flatten results #
 ###################
 
+
 def test_flatten_result_count():
     search = get_search()
-    fquery = FQuery(search).values(
-        Count(Sale),
-    ).group_by(
-        Sale.shop_id,
+    fquery = (
+        FQuery(search)
+        .values(
+            Count(Sale),
+        )
+        .group_by(
+            Sale.shop_id,
+        )
     )
 
-    result = load_output('nb_sales_by_shop')
+    result = load_output("nb_sales_by_shop")
     lines = fquery._flatten_result(result)
 
     assert len(lines) == 10  # One for each shop
 
     # Lines are sorted by doc_count
-    assert lines == sorted(lines, key=(lambda l: l['doc_count']), reverse=True)
+    assert lines == sorted(lines, key=(lambda li: li["doc_count"]), reverse=True)
 
     for line in lines:
         # Doc count is present
-        assert 'doc_count' in line
-        assert type(line['doc_count']) == int
+        assert "doc_count" in line
+        assert isinstance(line["doc_count"], int)
         # Aggregation is present
-        assert 'shop_id' in line
-        assert type(line['shop_id']) == int
+        assert "shop_id" in line
+        assert isinstance(line["shop_id"], int)
 
 
 def test_flatten_result_cast_sum_to_int():
     search = get_search()
-    fquery = FQuery(search).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        Sale.shop_id,
+    fquery = (
+        FQuery(search)
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            Sale.shop_id,
+        )
     )
 
-    result = load_output('total_sales_by_shop')
+    result = load_output("total_sales_by_shop")
     lines = fquery._flatten_result(result)
 
     assert len(lines) == 10  # One for each shop
 
     # Lines are sorted by doc_count
-    assert lines == sorted(lines, key=(lambda l: l['doc_count']), reverse=True)
+    assert lines == sorted(lines, key=(lambda li: li["doc_count"]), reverse=True)
 
     for line in lines:
         # Doc count is present
-        assert 'doc_count' in line
-        assert type(line['doc_count']) == int
+        assert "doc_count" in line
+        assert isinstance(line["doc_count"], int)
         # Aggregation and metric are present
-        assert 'shop_id' in line
-        assert type(line['shop_id']) == int
+        assert "shop_id" in line
+        assert isinstance(line["shop_id"], int)
         # Total sales aggregation results were casted to int
-        assert 'total_sales' in line
-        assert type(line['total_sales']) == int
+        assert "total_sales" in line
+        assert isinstance(line["total_sales"], int)
 
 
 def test_flatten_result_cast_timestamp():
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        DateHistogram(
-            Sale.timestamp,
-            interval='1d',
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            DateHistogram(
+                Sale.timestamp,
+                interval="1d",
+            ),
+        )
     )
 
-    result = load_output('total_sales_day_by_day')
+    result = load_output("total_sales_day_by_day")
     lines = fquery._flatten_result(result)
 
     assert len(lines) == 31
 
     for line in lines:
         # Doc count is present
-        assert 'doc_count' in line
-        assert type(line['doc_count']) == int
+        assert "doc_count" in line
+        assert isinstance(line["doc_count"], int)
         # Aggregation and metric are present
-        assert 'timestamp' in line
-        assert type(line['timestamp']) == datetime
+        assert "timestamp" in line
+        assert type(line["timestamp"]) == datetime
         # Total sales aggregation results were casted to int
-        assert 'total_sales' in line
-        assert type(line['total_sales']) == int
+        assert "total_sales" in line
+        assert isinstance(line["total_sales"], int)
 
 
 def test_flatten_result_histogram():
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        Histogram(
-            Sale.price,
-            interval=100,
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            Histogram(
+                Sale.price,
+                interval=100,
+            ),
+        )
     )
 
-    result = load_output('total_sales_by_price_histogram')
+    result = load_output("total_sales_by_price_histogram")
     lines = fquery._flatten_result(result)
 
     assert len(lines) == 11  # Prices go from 0 to 1000
 
     for line in lines:
         # Doc count is present
-        assert 'doc_count' in line
-        assert type(line['doc_count']) == int
+        assert "doc_count" in line
+        assert isinstance(line["doc_count"], int)
         # Aggregation and metric are present
-        assert 'price' in line
-        assert type(line['price']) == int
-        assert 'total_sales' in line
-        assert type(line['total_sales']) == int
+        assert "price" in line
+        assert isinstance(line["price"], int)
+        assert "total_sales" in line
+        assert isinstance(line["total_sales"], int)
 
     # All price ranges are present
-    assert sorted(
-        [line['price'] for line in lines]) == list(range(0, 1100, 100))
+    assert sorted([line["price"] for line in lines]) == list(range(0, 1100, 100))
 
 
 def test_computed_field():
@@ -1182,13 +1549,17 @@ def test_computed_field():
         Sum(TrafficCount.outgoing_traffic),
     )
 
-    fquery = FQuery(get_search()).values(
-        computed_field,
-    ).group_by(
-        TrafficCount.shop_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            computed_field,
+        )
+        .group_by(
+            TrafficCount.shop_id,
+        )
     )
 
-    result = load_output('total_in_traffic_and_total_out_traffic')
+    result = load_output("total_in_traffic_and_total_out_traffic")
     lines = fquery._flatten_result(result)
 
     assert len(lines) == 1
@@ -1211,13 +1582,17 @@ def test_multiple_computed_fields():
         addition,
     )
 
-    fquery = FQuery(get_search()).values(
-        computed_field,
-    ).group_by(
-        TrafficCount.shop_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            computed_field,
+        )
+        .group_by(
+            TrafficCount.shop_id,
+        )
     )
 
-    result = load_output('total_in_traffic_and_total_out_traffic')
+    result = load_output("total_in_traffic_and_total_out_traffic")
     lines = fquery._flatten_result(result)
 
     assert len(lines) == 1
@@ -1246,13 +1621,17 @@ def test_multiple_computed_fields_2():
         subtraction,
     )
 
-    fquery = FQuery(get_search()).values(
-        computed_field,
-    ).group_by(
-        TrafficCount.shop_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            computed_field,
+        )
+        .group_by(
+            TrafficCount.shop_id,
+        )
     )
 
-    result = load_output('total_in_traffic_and_total_out_traffic')
+    result = load_output("total_in_traffic_and_total_out_traffic")
     lines = fquery._flatten_result(result)
 
     assert len(lines) == 1
@@ -1274,344 +1653,406 @@ def test_computed_fields_raise_when_non_flat():
         Sum(TrafficCount.outgoing_traffic),
     )
 
-    fquery = FQuery(get_search()).values(
-        addition,
-    ).group_by(
-        TrafficCount.shop_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            addition,
+        )
+        .group_by(
+            TrafficCount.shop_id,
+        )
     )
     with pytest.raises(ConfigurationError):
         fquery.eval(flat=False)
 
 
 def test_reverse_nested_doc_count():
-    fquery = FQuery(get_search()).values(
-        ReverseNested(
-            Sale,
-            Count(Sale),
-        ),
-    ).group_by(
-        Sale.product_type,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            ReverseNested(
+                Sale,
+                Count(Sale),
+            ),
+        )
+        .group_by(
+            Sale.product_type,
+        )
     )
 
-    result = load_output('nb_sales_by_product_type')
+    result = load_output("nb_sales_by_product_type")
     lines = fquery._flatten_result(result)
 
     assert len(lines) == 5
     for line in lines:
         # Doc count is present
-        assert 'doc_count' in line
+        assert "doc_count" in line
         # Group by is present
-        assert 'product_type' in line
+        assert "product_type" in line
         # Reverse nested is present
-        assert str(ReverseNested(
-            Sale,
-            Count(Sale),
-        )) in line
+        assert (
+            str(
+                ReverseNested(
+                    Sale,
+                    Count(Sale),
+                )
+            )
+            in line
+        )
 
 
 def test_reverse_nested():
-    fquery = FQuery(get_search()).values(
-        ReverseNested(
-            Sale,
-            avg_sales=Avg(Sale.price),
-            total_sales=Sum(Sale.price),
-        ),
-    ).group_by(
-        Sale.product_type,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            ReverseNested(
+                Sale,
+                avg_sales=Avg(Sale.price),
+                total_sales=Sum(Sale.price),
+            ),
+        )
+        .group_by(
+            Sale.product_type,
+        )
     )
 
-    result = load_output('total_and_avg_sales_by_product_type')
+    result = load_output("total_and_avg_sales_by_product_type")
     lines = fquery._flatten_result(result)
 
     assert len(lines) == 5
     for line in lines:
         # Doc count is present
-        assert 'doc_count' in line
+        assert "doc_count" in line
         # Group by is present
-        assert 'product_type' in line
+        assert "product_type" in line
         # Reverse nested metrics are present and properly casted
         assert str(ReverseNested(Sale, Count(Sale))) in line
-        assert type(line[str(ReverseNested(Sale, Count(Sale)))]) == int
+        assert isinstance(line[str(ReverseNested(Sale, Count(Sale)))], int)
         assert str(ReverseNested(Sale, avg_sales=Avg(Sale.price))) in line
-        assert type(
-            line[str(ReverseNested(Sale, avg_sales=Avg(Sale.price)))]) == float
+        assert isinstance(
+            line[str(ReverseNested(Sale, avg_sales=Avg(Sale.price)))], float
+        )
         assert str(ReverseNested(Sale, total_sales=Sum(Sale.price))) in line
-        assert type(
-            line[str(ReverseNested(Sale, total_sales=Sum(Sale.price)))]) == int
+        assert isinstance(
+            line[str(ReverseNested(Sale, total_sales=Sum(Sale.price)))], int
+        )
 
 
 def test_reverse_nested_2():
-    fquery = FQuery(get_search()).values(
-        ReverseNested(
-            Sale,
-            avg_sales=Avg(Sale.price),
-        ),
-        avg_product_price=Avg(Sale.product_price),
-    ).group_by(
-        Sale.product_type,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            ReverseNested(
+                Sale,
+                avg_sales=Avg(Sale.price),
+            ),
+            avg_product_price=Avg(Sale.product_price),
+        )
+        .group_by(
+            Sale.product_type,
+        )
     )
 
-    result = load_output('avg_product_price_and_avg_sales_by_product_type')
+    result = load_output("avg_product_price_and_avg_sales_by_product_type")
     lines = fquery._flatten_result(result)
 
     assert len(lines) == 5  # 5 product types
     for line in lines:
         # Doc count is present
-        assert 'doc_count' in line
+        assert "doc_count" in line
         # Group by is present
-        assert 'product_type' in line
+        assert "product_type" in line
         # Reverse nested doc count is present
         assert str(ReverseNested(Sale, Count(Sale))) in line
-        assert type(line[str(ReverseNested(Sale, Count(Sale)))]) == int
+        assert isinstance(line[str(ReverseNested(Sale, Count(Sale)))], int)
         # Reverse nested metric is present
         assert str(ReverseNested(Sale, avg_sales=Avg(Sale.price))) in line
-        assert type(
-            line[str(ReverseNested(Sale, avg_sales=Avg(Sale.price)))]) == float
+        assert isinstance(
+            line[str(ReverseNested(Sale, avg_sales=Avg(Sale.price)))], float
+        )
         # Standard metric is present
-        assert 'avg_product_price' in line
-        assert type(line['avg_product_price']) == float
+        assert "avg_product_price" in line
+        assert isinstance(line["avg_product_price"], float)
 
 
 def test_add_others_doc_count():
-    fquery = FQuery(get_search(), default_size=2).values(
-        Count(Sale),
-    ).group_by(
-        Sale.shop_id,
+    fquery = (
+        FQuery(get_search(), default_size=2)
+        .values(
+            Count(Sale),
+        )
+        .group_by(
+            Sale.shop_id,
+        )
     )
 
-    result = load_output('nb_sales_by_shop_limited_size')
+    result = load_output("nb_sales_by_shop_limited_size")
     lines = fquery._flatten_result(result, add_others_line=True)
 
     assert len(lines) == 3  # size 2 plus others
 
     for line in lines:
         # Doc count is present
-        assert 'doc_count' in line
-        assert type(line['doc_count']) == int
+        assert "doc_count" in line
+        assert isinstance(line["doc_count"], int)
         # Group by is present
-        assert 'shop_id' in line
+        assert "shop_id" in line
 
     # 2 shop id lines, one others line
-    assert len([l for l in lines if type(l['shop_id']) == int]) == 2
-    assert len([l for l in lines if l['shop_id'] == 'others']) == 1
+    assert len([li for li in lines if isinstance(li["shop_id"], int)]) == 2
+    assert len([li for li in lines if li["shop_id"] == "others"]) == 1
 
 
 def test_add_others_metric():
-    fquery = FQuery(get_search(), default_size=2).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        Sale.shop_id,
+    fquery = (
+        FQuery(get_search(), default_size=2)
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            Sale.shop_id,
+        )
     )
 
-    result = load_output('total_sales_by_shop_limited_size')
+    result = load_output("total_sales_by_shop_limited_size")
     lines = fquery._flatten_result(result, add_others_line=True)
 
     assert len(lines) == 3  # size 2 plus others
 
     for line in lines:
         # Doc count is present
-        assert 'doc_count' in line
-        assert type(line['doc_count']) == int
+        assert "doc_count" in line
+        assert isinstance(line["doc_count"], int)
         # Metric is present
-        assert 'total_sales' in line
+        assert "total_sales" in line
         # Group by is present
-        assert 'shop_id' in line
+        assert "shop_id" in line
 
     # 2 shop id lines, one others line
-    assert len([l for l in lines if type(l['shop_id']) == int]) == 2
-    assert len([l for l in lines if l['shop_id'] == 'others']) == 1
+    assert len([li for li in lines if isinstance(li["shop_id"], int)]) == 2
+    assert len([li for li in lines if li["shop_id"] == "others"]) == 1
 
 
 def test_date_range_with_keys():
     ranges = [
         {
-            'from': datetime(2016, 1, 1),
-            'to': datetime(2016, 1, 15),
-            'key': 'first_half',
+            "from": datetime(2016, 1, 1),
+            "to": datetime(2016, 1, 15),
+            "key": "first_half",
         },
         {
-            'from': datetime(2016, 1, 15),
-            'to': datetime(2016, 1, 31),
-            'key': 'second_half',
+            "from": datetime(2016, 1, 15),
+            "to": datetime(2016, 1, 31),
+            "key": "second_half",
         },
     ]
-    fquery = FQuery(get_search()).values(
-        Count(Sale),
-    ).group_by(
-        DateRange(
-            Sale.timestamp,
-            ranges=ranges,
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            Count(Sale),
+        )
+        .group_by(
+            DateRange(
+                Sale.timestamp,
+                ranges=ranges,
+            ),
+        )
     )
 
-    result = load_output('nb_sales_by_date_range_with_keys')
+    result = load_output("nb_sales_by_date_range_with_keys")
     lines = fquery._flatten_result(result)
 
     assert len(lines) == 2
     for line in lines:
         # Doc count is present
-        assert 'doc_count' in line
-        assert type(line['doc_count']) == int
+        assert "doc_count" in line
+        assert isinstance(line["doc_count"], int)
         # Group by is present
-        assert 'timestamp' in line
-        assert type(line['timestamp']) == str
+        assert "timestamp" in line
+        assert isinstance(line["timestamp"], str)
 
-    assert [l['timestamp'] for l in lines] == ['first_half', 'second_half']
+    assert [li["timestamp"] for li in lines] == ["first_half", "second_half"]
 
 
 def test_date_range_without_keys():
     ranges = [
         {
-            'from': datetime(2016, 1, 1),
-            'to': datetime(2016, 1, 15),
+            "from": datetime(2016, 1, 1),
+            "to": datetime(2016, 1, 15),
         },
         {
-            'from': datetime(2016, 1, 15),
-            'to': datetime(2016, 1, 31),
+            "from": datetime(2016, 1, 15),
+            "to": datetime(2016, 1, 31),
         },
     ]
-    fquery = FQuery(get_search()).values(
-        Count(Sale),
-    ).group_by(
-        DateRange(
-            Sale.timestamp,
-            ranges=ranges,
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            Count(Sale),
+        )
+        .group_by(
+            DateRange(
+                Sale.timestamp,
+                ranges=ranges,
+            ),
+        )
     )
 
-    result = load_output('nb_sales_by_date_range_with_keys')
+    result = load_output("nb_sales_by_date_range_with_keys")
     lines = fquery._flatten_result(result)
 
     assert len(lines) == 2
     for line in lines:
         # Doc count is present
-        assert 'doc_count' in line
-        assert type(line['doc_count']) == int
+        assert "doc_count" in line
+        assert isinstance(line["doc_count"], int)
         # Group by is present
-        assert 'timestamp' in line
-        assert type(line['timestamp']) == str
+        assert "timestamp" in line
+        assert isinstance(line["timestamp"], str)
 
 
 def test_flatten_result_grouped_field():
     shops_by_group = {
-        'group_a': range(1, 6),
-        'group_b': range(6, 11),
+        "group_a": range(1, 6),
+        "group_b": range(6, 11),
     }
-    fquery = FQuery(get_search()).values(
-        Count(Sale),
-    ).group_by(
-        GroupedField(
-            Sale.shop_id,
-            groups=shops_by_group,
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            Count(Sale),
+        )
+        .group_by(
+            GroupedField(
+                Sale.shop_id,
+                groups=shops_by_group,
+            ),
+        )
     )
 
-    result = load_output('nb_sales_by_grouped_shop')
+    result = load_output("nb_sales_by_grouped_shop")
     lines = fquery._flatten_result(result)
 
     assert len(lines) == 2
     for line in lines:
         # Doc count is present
-        assert 'doc_count' in line
-        assert type(line['doc_count']) == int
+        assert "doc_count" in line
+        assert isinstance(line["doc_count"], int)
         # Group by is present
-        assert 'shop_id' in line
+        assert "shop_id" in line
         # But was not casted to int
-        assert type(line['shop_id']) == str
+        assert isinstance(line["shop_id"], str)
 
 
 def test_flatten_result_grouped_field_multiple_aggregations():
     shops_by_group = {
-        'group_a': range(1, 6),
-        'group_b': range(6, 11),
+        "group_a": range(1, 6),
+        "group_b": range(6, 11),
     }
-    fquery = FQuery(get_search()).values(
-        Count(Sale),
-    ).group_by(
-        Sale.payment_type,
-        GroupedField(
-            Sale.shop_id,
-            groups=shops_by_group,
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            Count(Sale),
+        )
+        .group_by(
+            Sale.payment_type,
+            GroupedField(
+                Sale.shop_id,
+                groups=shops_by_group,
+            ),
+        )
     )
 
-    result = load_output('nb_sales_by_payment_type_by_grouped_shop')
+    result = load_output("nb_sales_by_payment_type_by_grouped_shop")
     lines = fquery._flatten_result(result)
 
     assert len(lines) == 3 * 2
     for line in lines:
         # Doc count is present
-        assert 'doc_count' in line
-        assert type(line['doc_count']) == int
+        assert "doc_count" in line
+        assert isinstance(line["doc_count"], int)
         # Shop aggregation is present
-        assert 'shop_id' in line
+        assert "shop_id" in line
         # Shop id was a string in the GroupedField
-        assert type(line['shop_id']) == str
+        assert isinstance(line["shop_id"], str)
         # Payment type aggregation is present
-        assert 'payment_type' in line
-        assert type(line['payment_type']) == str
+        assert "payment_type" in line
+        assert isinstance(line["payment_type"], str)
 
 
 def test_flatten_result_grouped_field_with_metric():
     shops_by_group = {
-        'group_a': range(1, 6),
-        'group_b': range(6, 11),
+        "group_a": range(1, 6),
+        "group_b": range(6, 11),
     }
-    fquery = FQuery(get_search()).values(
-        avg_sales=Avg(Sale.price),
-    ).group_by(
-        GroupedField(
-            Sale.shop_id,
-            groups=shops_by_group,
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            avg_sales=Avg(Sale.price),
+        )
+        .group_by(
+            GroupedField(
+                Sale.shop_id,
+                groups=shops_by_group,
+            ),
+        )
     )
 
-    result = load_output('avg_sales_by_grouped_shop')
+    result = load_output("avg_sales_by_grouped_shop")
     lines = fquery._flatten_result(result)
 
     assert len(lines) == 2
     for line in lines:
         # Doc count is present
-        assert 'doc_count' in line
-        assert type(line['doc_count']) == int
+        assert "doc_count" in line
+        assert isinstance(line["doc_count"], int)
         # Metric is present
-        assert 'avg_sales' in line
-        assert type(line['avg_sales']) == float
+        assert "avg_sales" in line
+        assert isinstance(line["avg_sales"], float)
         # Shop aggregation is present
-        assert 'shop_id' in line
+        assert "shop_id" in line
         # Shop id was a string in the GroupedField
-        assert type(line['shop_id']) == str
+        assert isinstance(line["shop_id"], str)
 
 
 ########################
 # Fill missing buckets #
 ########################
 
+
 def test_fill_missing_buckets_nothing_to_do():
     search = get_search()
-    fquery = FQuery(search).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        Sale.shop_id,
+    fquery = (
+        FQuery(search)
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            Sale.shop_id,
+        )
     )
 
-    result = load_output('total_sales_by_shop')
+    result = load_output("total_sales_by_shop")
     lines = fquery._flatten_result(result)
     assert lines == fquery._add_missing_lines(lines)
 
 
 def test_fill_missing_buckets_cannot_do_anything():
     search = get_search()
-    fquery = FQuery(search).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        Sale.shop_id,
+    fquery = (
+        FQuery(search)
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            Sale.shop_id,
+        )
     )
 
-    result = load_output('total_sales_by_shop')
-    result['aggregations']['shop_id']['buckets'] = [
-        bucket for bucket in result['aggregations']['shop_id']['buckets']
-        if bucket['key'] != 1
+    result = load_output("total_sales_by_shop")
+    result["aggregations"]["shop_id"]["buckets"] = [
+        bucket
+        for bucket in result["aggregations"]["shop_id"]["buckets"]
+        if bucket["key"] != 1
     ]
 
     lines = fquery._flatten_result(result)
@@ -1622,31 +2063,36 @@ def test_fill_missing_buckets_cannot_do_anything():
 
 def test_fill_missing_buckets_custom_choices():
     search = get_search()
-    fquery = FQuery(search).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        FieldWithChoices(Sale.shop_id, choices=range(1, 11)),
+    fquery = (
+        FQuery(search)
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            FieldWithChoices(Sale.shop_id, choices=range(1, 11)),
+        )
     )
 
-    result = load_output('total_sales_by_shop')
-    result['aggregations']['shop_id']['buckets'] = [
-        bucket for bucket in result['aggregations']['shop_id']['buckets']
-        if bucket['key'] != 1
+    result = load_output("total_sales_by_shop")
+    result["aggregations"]["shop_id"]["buckets"] = [
+        bucket
+        for bucket in result["aggregations"]["shop_id"]["buckets"]
+        if bucket["key"] != 1
     ]
 
     lines = fquery._flatten_result(result)
     assert len(lines) == 9
-    assert sorted([line['shop_id'] for line in lines]) == list(range(2, 11))
+    assert sorted([line["shop_id"] for line in lines]) == list(range(2, 11))
 
     lines == fquery._add_missing_lines(lines)
     assert len(lines) == 10
-    assert sorted([line['shop_id'] for line in lines]) == list(range(1, 11))
+    assert sorted([line["shop_id"] for line in lines]) == list(range(1, 11))
 
-    added_line = [line for line in lines if line['shop_id'] == 1][0]
+    added_line = [line for line in lines if line["shop_id"] == 1][0]
     assert added_line == {
-        'shop_id': 1,
-        'total_sales': None,
-        'doc_count': 0,
+        "shop_id": 1,
+        "total_sales": None,
+        "doc_count": 0,
     }
 
 
@@ -1656,93 +2102,107 @@ def test_fill_missing_buckets_field_choices():
         price = IntegerField()
 
     search = get_search()
-    fquery = FQuery(search).values(
-        total_sales=Sum(SaleWithChoices.price),
-    ).group_by(
-        SaleWithChoices.shop_id,
+    fquery = (
+        FQuery(search)
+        .values(
+            total_sales=Sum(SaleWithChoices.price),
+        )
+        .group_by(
+            SaleWithChoices.shop_id,
+        )
     )
 
-    result = load_output('total_sales_by_shop')
-    result['aggregations']['shop_id']['buckets'] = [
-        bucket for bucket in result['aggregations']['shop_id']['buckets']
-        if bucket['key'] != 1
+    result = load_output("total_sales_by_shop")
+    result["aggregations"]["shop_id"]["buckets"] = [
+        bucket
+        for bucket in result["aggregations"]["shop_id"]["buckets"]
+        if bucket["key"] != 1
     ]
 
     lines = fquery._flatten_result(result)
     assert len(lines) == 9
-    assert sorted([line['shop_id'] for line in lines]) == list(range(2, 11))
+    assert sorted([line["shop_id"] for line in lines]) == list(range(2, 11))
 
     lines == fquery._add_missing_lines(lines)
     assert len(lines) == 10
-    assert sorted([line['shop_id'] for line in lines]) == list(range(1, 11))
+    assert sorted([line["shop_id"] for line in lines]) == list(range(1, 11))
 
-    added_line = [line for line in lines if line['shop_id'] == 1][0]
+    added_line = [line for line in lines if line["shop_id"] == 1][0]
     assert added_line == {
-        'shop_id': 1,
-        'total_sales': None,
-        'doc_count': 0,
+        "shop_id": 1,
+        "total_sales": None,
+        "doc_count": 0,
     }
 
 
 def test_fill_missing_buckets_field_choices_pretty():
-    pretty_choices = [(i, 'Shop {}'.format(i)) for i in range(1, 11)]
+    pretty_choices = [(i, f"Shop {i}") for i in range(1, 11)]
 
     class SaleWithPrettyChoices(Model):
         shop_id = IntegerField(choices=pretty_choices)
         price = IntegerField()
 
     search = get_search()
-    fquery = FQuery(search).values(
-        total_sales=Sum(SaleWithPrettyChoices.price),
-    ).group_by(
-        SaleWithPrettyChoices.shop_id,
+    fquery = (
+        FQuery(search)
+        .values(
+            total_sales=Sum(SaleWithPrettyChoices.price),
+        )
+        .group_by(
+            SaleWithPrettyChoices.shop_id,
+        )
     )
 
-    result = load_output('total_sales_by_shop')
-    result['aggregations']['shop_id']['buckets'] = [
-        bucket for bucket in result['aggregations']['shop_id']['buckets']
-        if bucket['key'] != 1
+    result = load_output("total_sales_by_shop")
+    result["aggregations"]["shop_id"]["buckets"] = [
+        bucket
+        for bucket in result["aggregations"]["shop_id"]["buckets"]
+        if bucket["key"] != 1
     ]
 
     lines = fquery._flatten_result(result)
     assert len(lines) == 9
-    assert sorted([line['shop_id'] for line in lines]) == list(range(2, 11))
+    assert sorted([line["shop_id"] for line in lines]) == list(range(2, 11))
 
     lines = fquery._add_missing_lines(lines)
     assert len(lines) == 10
-    assert sorted([line['shop_id'] for line in lines]) == list(range(1, 11))
+    assert sorted([line["shop_id"] for line in lines]) == list(range(1, 11))
 
-    added_line = [line for line in lines if line['shop_id'] == 1][0]
+    added_line = [line for line in lines if line["shop_id"] == 1][0]
     assert added_line == {
-        'shop_id': 1,
-        'total_sales': None,
-        'doc_count': 0,
+        "shop_id": 1,
+        "total_sales": None,
+        "doc_count": 0,
     }
 
 
 def test_fill_missing_buckets_values_in_other_agg():
     search = get_search()
-    fquery = FQuery(search).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        Sale.payment_type,
-        Sale.shop_id,
+    fquery = (
+        FQuery(search)
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            Sale.payment_type,
+            Sale.shop_id,
+        )
     )
 
-    result = load_output('total_sales_by_payment_type_by_shop_id')
+    result = load_output("total_sales_by_payment_type_by_shop_id")
     wire_transfer_bucket = [
-        b for b in result['aggregations']['payment_type']['buckets']
-        if b['key'] == 'wire_transfer'
+        b
+        for b in result["aggregations"]["payment_type"]["buckets"]
+        if b["key"] == "wire_transfer"
     ][0]
-    wire_transfer_bucket['shop_id']['buckets'] = [
-        b for b in wire_transfer_bucket['shop_id']['buckets']
-        if b['key'] != 1
+    wire_transfer_bucket["shop_id"]["buckets"] = [
+        b for b in wire_transfer_bucket["shop_id"]["buckets"] if b["key"] != 1
     ]
 
     lines = fquery._flatten_result(result)
     assert len(lines) == 29
     # All shop ids are present three times
-    counter = Counter([line['shop_id'] for line in lines])
+    counter = Counter([line["shop_id"] for line in lines])
     for i in range(2, 11):
         assert counter[i] == 3
     # Except the one I removed
@@ -1751,34 +2211,39 @@ def test_fill_missing_buckets_values_in_other_agg():
     lines = fquery._add_missing_lines(lines)
     assert len(lines) == 30
     # All shop ids are present three times
-    counter = Counter([line['shop_id'] for line in lines])
+    counter = Counter([line["shop_id"] for line in lines])
     for i in range(1, 11):
         assert counter[i] == 3
 
     added_line = [
-        line for line in lines
-        if line['shop_id'] == 1 and line['payment_type'] == 'wire_transfer'
+        line
+        for line in lines
+        if line["shop_id"] == 1 and line["payment_type"] == "wire_transfer"
     ][0]
     assert added_line == {
-        'shop_id': 1,
-        'total_sales': None,
-        'doc_count': 0,
-        'payment_type': 'wire_transfer',
+        "shop_id": 1,
+        "total_sales": None,
+        "doc_count": 0,
+        "payment_type": "wire_transfer",
     }
 
 
 def test_fill_missing_buckets_histogram_nothing_to_do():
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        Histogram(
-            Sale.price,
-            interval=100,
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            Histogram(
+                Sale.price,
+                interval=100,
+            ),
+        )
     )
     fquery._configure_search()
 
-    result = load_output('total_sales_by_price_histogram')
+    result = load_output("total_sales_by_price_histogram")
 
     lines = fquery._flatten_result(result)
     assert len(lines) == 11
@@ -1787,20 +2252,24 @@ def test_fill_missing_buckets_histogram_nothing_to_do():
 
 
 def test_fill_missing_buckets_histogram():
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        Histogram(
-            Sale.price,
-            interval=100,
-            # We force a range where there are no buckets
-            min=0,
-            max=1500,
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            Histogram(
+                Sale.price,
+                interval=100,
+                # We force a range where there are no buckets
+                min=0,
+                max=1500,
+            ),
+        )
     )
     fquery._configure_search()
 
-    result = load_output('total_sales_by_price_histogram')
+    result = load_output("total_sales_by_price_histogram")
 
     lines = fquery._flatten_result(result)
     lines = fquery._add_missing_lines(lines)
@@ -1809,58 +2278,72 @@ def test_fill_missing_buckets_histogram():
     assert len(lines) == 11
 
 
-@pytest.mark.parametrize('pretty_period,interval,nb_lines', [
-    ('day', '1d', 31),
-    ('week', '1w', 5),
-    ('month', '1M', 2),
-    ('year', '1y', 2),
-])
+@pytest.mark.parametrize(
+    "pretty_period,interval,nb_lines",
+    [
+        ("day", "1d", 31),
+        ("week", "1w", 5),
+        ("month", "1M", 2),
+        ("year", "1y", 2),
+    ],
+)
 def test_fill_missing_buckets_date_histogram_nothing_to_do(
-        pretty_period, interval, nb_lines):
+    pretty_period, interval, nb_lines
+):
     search = get_search()
-    fquery = FQuery(search).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        DateHistogram(
-            Sale.timestamp,
-            interval=interval,
-            min=datetime(2016, 1, 1),
-            max=datetime(2016, 1, 31),
-        ),
+    fquery = (
+        FQuery(search)
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            DateHistogram(
+                Sale.timestamp,
+                interval=interval,
+                min=datetime(2016, 1, 1),
+                max=datetime(2016, 1, 31),
+            ),
+        )
     )
     fquery._configure_search()
 
-    result = load_output(
-        'total_sales_{}_by_{}'.format(pretty_period, pretty_period))
+    result = load_output(f"total_sales_{pretty_period}_by_{pretty_period}")
 
     lines = fquery._flatten_result(result)
     lines = fquery._add_missing_lines(lines)
     assert len(lines) == nb_lines
 
 
-@pytest.mark.parametrize('pretty_period,interval,start,end,nb_lines', [
-    ('day', '1d', datetime(2015, 12, 1), datetime(2016, 1, 31), 62),
-    ('week', '1w', datetime(2015, 12, 1), datetime(2016, 1, 31), 9),
-    ('month', '1M', datetime(2015, 12, 1), datetime(2016, 6, 1), 7),
-    ('year', '1y', datetime(2012, 1, 1), datetime(2016, 1, 31), 5),
-])
-def test_fill_missing_buckets_date_histogram(pretty_period, interval,
-                                             start, end, nb_lines):
+@pytest.mark.parametrize(
+    "pretty_period,interval,start,end,nb_lines",
+    [
+        ("day", "1d", datetime(2015, 12, 1), datetime(2016, 1, 31), 62),
+        ("week", "1w", datetime(2015, 12, 1), datetime(2016, 1, 31), 9),
+        ("month", "1M", datetime(2015, 12, 1), datetime(2016, 6, 1), 7),
+        ("year", "1y", datetime(2012, 1, 1), datetime(2016, 1, 31), 5),
+    ],
+)
+def test_fill_missing_buckets_date_histogram(
+    pretty_period, interval, start, end, nb_lines
+):
     search = get_search()
-    fquery = FQuery(search).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        DateHistogram(
-            Sale.timestamp,
-            interval=interval,
-            min=start,
-            max=end,
-        ),
+    fquery = (
+        FQuery(search)
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            DateHistogram(
+                Sale.timestamp,
+                interval=interval,
+                min=start,
+                max=end,
+            ),
+        )
     )
     fquery._configure_search()
 
-    result = load_output(
-        'total_sales_{}_by_{}'.format(pretty_period, pretty_period))
+    result = load_output(f"total_sales_{pretty_period}_by_{pretty_period}")
 
     lines = fquery._flatten_result(result)
     lines = fquery._add_missing_lines(lines)
@@ -1871,44 +2354,55 @@ def test_fill_missing_buckets_date_histogram_multiple_days():
     start = datetime(2015, 12, 1)
     end = datetime(2016, 1, 31)
 
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        DateHistogram(
-            Sale.timestamp,
-            interval='4d',
-            min=start,
-            max=end,
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            DateHistogram(
+                Sale.timestamp,
+                interval="4d",
+                min=start,
+                max=end,
+            ),
+        )
     )
     fquery._configure_search()
 
-    result = load_output('total_sales_every_four_days')
+    result = load_output("total_sales_every_four_days")
 
     lines = fquery._flatten_result(result)
     lines = fquery._add_missing_lines(lines)
     assert len(lines) == 16
 
 
-@pytest.mark.parametrize('start,end,nb_lines', [
-    (datetime(2016, 1, 1), datetime(2016, 1, 31), 31),
-    (datetime(2015, 12, 1), datetime(2016, 1, 31), 61),
-])
+@pytest.mark.parametrize(
+    "start,end,nb_lines",
+    [
+        (datetime(2016, 1, 1), datetime(2016, 1, 31), 31),
+        (datetime(2015, 12, 1), datetime(2016, 1, 31), 61),
+    ],
+)
 def test_fill_missing_buckets_date_histogram_offset(start, end, nb_lines):
-    fquery = FQuery(get_search()).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        DateHistogram(
-            Sale.timestamp,
-            interval='1d',
-            offset='+8h',
-            min=start,
-            max=end,
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            DateHistogram(
+                Sale.timestamp,
+                interval="1d",
+                offset="+8h",
+                min=start,
+                max=end,
+            ),
+        )
     )
     fquery._configure_search()
 
-    result = load_output('total_sales_by_day_offset_8hours')
+    result = load_output("total_sales_by_day_offset_8hours")
 
     lines = fquery._flatten_result(result)
     lines = fquery._add_missing_lines(lines)
@@ -1918,42 +2412,48 @@ def test_fill_missing_buckets_date_histogram_offset(start, end, nb_lines):
 def test_fill_missing_buckets_ranges():
     ranges = [[1, 5], [5, 11], [11, 15]]
     search = get_search()
-    fquery = FQuery(search).values(
-        total_sales=Sum(Sale.price),
-    ).group_by(
-        Sale.payment_type,
-        FieldWithRanges(Sale.shop_id, ranges=ranges)
+    fquery = (
+        FQuery(search)
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(Sale.payment_type, FieldWithRanges(Sale.shop_id, ranges=ranges))
     )
     fquery._configure_search()
 
-    result = load_output('total_sales_by_payment_type_by_shop_range')
+    result = load_output("total_sales_by_payment_type_by_shop_range")
     # We remove one bucket
     payment_type_buckets = [
-        b for b in result['aggregations']['payment_type']['buckets']
-        if b['key'] != 'wire_transfer'
+        b
+        for b in result["aggregations"]["payment_type"]["buckets"]
+        if b["key"] != "wire_transfer"
     ]
-    result['aggregations']['payment_type']['buckets'] = payment_type_buckets
+    result["aggregations"]["payment_type"]["buckets"] = payment_type_buckets
 
     lines = fquery._flatten_result(result)
     assert len(lines) == 6  # 3 shop ranges, 2 payment types
-    assert set([l['payment_type'] for l in lines]) == {'cash', 'store_credit'}
+    assert {li["payment_type"] for li in lines} == {"cash", "store_credit"}
 
     lines = fquery._add_missing_lines(lines)
     assert len(lines) == 9  # 3 shop ranges, 3 payment types
-    added_lines = [l for l in lines if l['payment_type'] == 'wire_transfer']
-    range_keys = ['1 - 5', '5 - 11', '11 - 15']
-    assert sorted([l['shop_id'] for l in added_lines]) == sorted(range_keys)
+    added_lines = [li for li in lines if li["payment_type"] == "wire_transfer"]
+    range_keys = ["1 - 5", "5 - 11", "11 - 15"]
+    assert sorted([li["shop_id"] for li in added_lines]) == sorted(range_keys)
 
 
 def test_fill_missing_buckets_nested_nothing_to_do():
-    fquery = FQuery(get_search()).values(
-        avg_part_price=Avg(Sale.part_price),
-    ).group_by(
-        Sale.part_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            avg_part_price=Avg(Sale.part_price),
+        )
+        .group_by(
+            Sale.part_id,
+        )
     )
     fquery._configure_search()
 
-    result = load_output('avg_part_price_by_part')
+    result = load_output("avg_part_price_by_part")
 
     lines = fquery._flatten_result(result)
     assert len(lines) == 10  # 10 parts
@@ -1963,23 +2463,25 @@ def test_fill_missing_buckets_nested_nothing_to_do():
 
 
 def test_fill_missing_buckets_nested():
-    fquery = FQuery(get_search()).values(
-        avg_part_price=Avg(Sale.part_price),
-    ).group_by(
-        Sale.product_id,
-        Sale.part_id,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            avg_part_price=Avg(Sale.part_price),
+        )
+        .group_by(
+            Sale.product_id,
+            Sale.part_id,
+        )
     )
     fquery._configure_search()
 
-    result = load_output('avg_part_price_by_product_by_part')
+    result = load_output("avg_part_price_by_product_by_part")
     # We remove one part bucket in the first product bucket
-    product_bucket = result[
-        'aggregations']['products']['product_id']['buckets'][0]
+    product_bucket = result["aggregations"]["products"]["product_id"]["buckets"][0]
     part_id_buckets = [
-        b for b in product_bucket['parts']['part_id']['buckets']
-        if b['key'] != 'part_1'
+        b for b in product_bucket["parts"]["part_id"]["buckets"] if b["key"] != "part_1"
     ]
-    product_bucket['parts']['part_id']['buckets'] = part_id_buckets
+    product_bucket["parts"]["part_id"]["buckets"] = part_id_buckets
 
     lines = fquery._flatten_result(result)
     assert len(lines) == 99  # 10 parts, 10 products minus the one we removed
@@ -1989,75 +2491,78 @@ def test_fill_missing_buckets_nested():
 
 
 def test_fill_missing_buckets_reverse_nested_doc_count():
-    product_types = [
-        'product_type_{}'.format(i)
-        for i in range(5)
-    ]
+    product_types = [f"product_type_{i}" for i in range(5)]
 
-    fquery = FQuery(get_search()).values(
-        ReverseNested(
-            Sale,
-            Count(Sale),
-        ),
-    ).group_by(
-        FieldWithChoices(Sale.product_type, choices=product_types),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            ReverseNested(
+                Sale,
+                Count(Sale),
+            ),
+        )
+        .group_by(
+            FieldWithChoices(Sale.product_type, choices=product_types),
+        )
     )
     fquery._configure_search()
 
-    result = load_output('nb_sales_by_product_type')
-    product_type_buckets = result[
-        'aggregations']['products']['product_type']['buckets']
+    result = load_output("nb_sales_by_product_type")
+    product_type_buckets = result["aggregations"]["products"]["product_type"]["buckets"]
     product_type_buckets = [
-        b for b in product_type_buckets
-        if b['key'] != 'product_type_0'
+        b for b in product_type_buckets if b["key"] != "product_type_0"
     ]
-    result['aggregations']['products']['product_type']['buckets'] = product_type_buckets  # noqa
+    result["aggregations"]["products"]["product_type"]["buckets"] = product_type_buckets
     lines = fquery._flatten_result(result)
 
     assert len(lines) == 4
-    assert sorted([l['product_type'] for l in lines]) == product_types[1:]
+    assert sorted([li["product_type"] for li in lines]) == product_types[1:]
 
     lines = fquery._add_missing_lines(lines)
     assert len(lines) == 5
-    assert sorted([l['product_type'] for l in lines]) == product_types
+    assert sorted([li["product_type"] for li in lines]) == product_types
 
     # Reverse nested aggregation is present in all lines
     for line in lines:
-        assert str(ReverseNested(
-            Sale,
-            Count(Sale),
-        )) in line
+        assert (
+            str(
+                ReverseNested(
+                    Sale,
+                    Count(Sale),
+                )
+            )
+            in line
+        )
 
 
 def test_fill_missing_buckets_reverse_nested():
-    product_types = [
-        'product_type_{}'.format(i)
-        for i in range(5)
-    ]
+    product_types = [f"product_type_{i}" for i in range(5)]
 
-    fquery = FQuery(get_search()).values(
-        ReverseNested(
-            Sale,
-            avg_sales=Avg(Sale.price),
-            total_sales=Sum(Sale.price),
-        ),
-    ).group_by(
-        FieldWithChoices(Sale.product_type, choices=product_types),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            ReverseNested(
+                Sale,
+                avg_sales=Avg(Sale.price),
+                total_sales=Sum(Sale.price),
+            ),
+        )
+        .group_by(
+            FieldWithChoices(Sale.product_type, choices=product_types),
+        )
     )
     fquery._configure_search()
 
-    result = load_output('total_and_avg_sales_by_product_type')
-    product_type_buckets = result[
-        'aggregations']['products']['product_type']['buckets']
+    result = load_output("total_and_avg_sales_by_product_type")
+    product_type_buckets = result["aggregations"]["products"]["product_type"]["buckets"]
     product_type_buckets = [
-        b for b in product_type_buckets
-        if b['key'] != 'product_type_0'
+        b for b in product_type_buckets if b["key"] != "product_type_0"
     ]
-    result['aggregations']['products']['product_type']['buckets'] = product_type_buckets  # noqa
+    result["aggregations"]["products"]["product_type"]["buckets"] = product_type_buckets
     lines = fquery._flatten_result(result)
 
     assert len(lines) == 4
-    assert sorted([l['product_type'] for l in lines]) == product_types[1:]
+    assert sorted([li["product_type"] for li in lines]) == product_types[1:]
     for line in lines:
         assert str(ReverseNested(Sale, avg_sales=Avg(Sale.price))) in line
         assert str(ReverseNested(Sale, total_sales=Sum(Sale.price))) in line
@@ -2065,7 +2570,7 @@ def test_fill_missing_buckets_reverse_nested():
 
     lines = fquery._add_missing_lines(lines)
     assert len(lines) == 5
-    assert sorted([l['product_type'] for l in lines]) == product_types
+    assert sorted([li["product_type"] for li in lines]) == product_types
     for line in lines:
         assert str(ReverseNested(Sale, avg_sales=Avg(Sale.price))) in line
         assert str(ReverseNested(Sale, total_sales=Sum(Sale.price))) in line
@@ -2075,69 +2580,78 @@ def test_fill_missing_buckets_reverse_nested():
 def test_fill_missing_buckets_date_range_with_keys():
     ranges = [
         {
-            'from': datetime(2016, 1, 1),
-            'to': datetime(2016, 1, 15),
-            'key': 'first_half',
+            "from": datetime(2016, 1, 1),
+            "to": datetime(2016, 1, 15),
+            "key": "first_half",
         },
         {
-            'from': datetime(2016, 1, 15),
-            'to': datetime(2016, 1, 31),
-            'key': 'second_half',
+            "from": datetime(2016, 1, 15),
+            "to": datetime(2016, 1, 31),
+            "key": "second_half",
         },
     ]
-    fquery = FQuery(get_search()).values(
-        Count(Sale),
-    ).group_by(
-        DateRange(
-            Sale.timestamp,
-            ranges=ranges,
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            Count(Sale),
+        )
+        .group_by(
+            DateRange(
+                Sale.timestamp,
+                ranges=ranges,
+            ),
+        )
     )
     fquery._configure_search()
 
-    result = load_output('nb_sales_by_date_range_with_keys')
-    buckets = result['aggregations']['timestamp']['buckets']
+    result = load_output("nb_sales_by_date_range_with_keys")
+    buckets = result["aggregations"]["timestamp"]["buckets"]
     buckets = buckets[1:]
-    result['aggregations']['timestamp']['buckets'] = buckets
+    result["aggregations"]["timestamp"]["buckets"] = buckets
 
     lines = fquery._flatten_result(result)
     assert len(lines) == 1
-    assert [l['timestamp'] for l in lines] == ['second_half']
+    assert [li["timestamp"] for li in lines] == ["second_half"]
 
     lines = fquery._add_missing_lines(lines)
     assert len(lines) == 2
-    assert [l['timestamp'] for l in lines] == ['second_half', 'first_half']
+    assert [li["timestamp"] for li in lines] == ["second_half", "first_half"]
 
 
 def test_fill_missing_buckets_date_range_multiple_group_by():
     ranges = [
         {
-            'from': datetime(2016, 1, 1),
-            'to': datetime(2016, 1, 15),
-            'key': 'first_half',
+            "from": datetime(2016, 1, 1),
+            "to": datetime(2016, 1, 15),
+            "key": "first_half",
         },
         {
-            'from': datetime(2016, 1, 15),
-            'to': datetime(2016, 1, 31),
-            'key': 'second_half',
+            "from": datetime(2016, 1, 15),
+            "to": datetime(2016, 1, 31),
+            "key": "second_half",
         },
     ]
-    fquery = FQuery(get_search()).values(
-        Count(Sale),
-    ).group_by(
-        DateRange(
-            Sale.timestamp,
-            ranges=ranges,
-        ),
-        Sale.payment_type,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            Count(Sale),
+        )
+        .group_by(
+            DateRange(
+                Sale.timestamp,
+                ranges=ranges,
+            ),
+            Sale.payment_type,
+        )
     )
     fquery._configure_search()
 
-    result = load_output('nb_sales_by_payment_type_by_date_range')
-    payment_type_buckets = result['aggregations']['payment_type']['buckets']
+    result = load_output("nb_sales_by_payment_type_by_date_range")
+    payment_type_buckets = result["aggregations"]["payment_type"]["buckets"]
     payment_type_buckets = [
-        b for b in payment_type_buckets if b['key'] != 'wire_transfer']
-    result['aggregations']['payment_type']['buckets'] = payment_type_buckets
+        b for b in payment_type_buckets if b["key"] != "wire_transfer"
+    ]
+    result["aggregations"]["payment_type"]["buckets"] = payment_type_buckets
 
     lines = fquery._flatten_result(result)
     assert len(lines) == 4  # 2 date periods, 2 payment types
@@ -2149,32 +2663,35 @@ def test_fill_missing_buckets_date_range_multiple_group_by():
 def test_fill_missing_buckets_date_range_multiple_group_by_2():
     ranges = [
         {
-            'from': datetime(2016, 1, 1),
-            'to': datetime(2016, 1, 15),
-            'key': 'first_half',
+            "from": datetime(2016, 1, 1),
+            "to": datetime(2016, 1, 15),
+            "key": "first_half",
         },
         {
-            'from': datetime(2016, 1, 15),
-            'to': datetime(2016, 1, 31),
-            'key': 'second_half',
+            "from": datetime(2016, 1, 15),
+            "to": datetime(2016, 1, 31),
+            "key": "second_half",
         },
     ]
-    fquery = FQuery(get_search()).values(
-        Count(Sale),
-    ).group_by(
-        Sale.payment_type,
-        DateRange(
-            Sale.timestamp,
-            ranges=ranges,
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            Count(Sale),
+        )
+        .group_by(
+            Sale.payment_type,
+            DateRange(
+                Sale.timestamp,
+                ranges=ranges,
+            ),
+        )
     )
     fquery._configure_search()
 
-    result = load_output('nb_sales_by_date_range_by_payment_type')
-    timestamp_buckets = result['aggregations']['timestamp']['buckets']
-    timestamp_buckets = [
-        b for b in timestamp_buckets if b['key'] != 'second_half']
-    result['aggregations']['timestamp']['buckets'] = timestamp_buckets
+    result = load_output("nb_sales_by_date_range_by_payment_type")
+    timestamp_buckets = result["aggregations"]["timestamp"]["buckets"]
+    timestamp_buckets = [b for b in timestamp_buckets if b["key"] != "second_half"]
+    result["aggregations"]["timestamp"]["buckets"] = timestamp_buckets
 
     lines = fquery._flatten_result(result)
     assert len(lines) == 3  # 1 date period, 3 payment types
@@ -2185,25 +2702,30 @@ def test_fill_missing_buckets_date_range_multiple_group_by_2():
 
 def test_fill_missing_buckets_grouped_field():
     shops_by_group = {
-        'group_a': range(1, 6),
-        'group_b': range(6, 11),
+        "group_a": range(1, 6),
+        "group_b": range(6, 11),
     }
-    fquery = FQuery(get_search()).values(
-        Count(Sale),
-    ).group_by(
-        Sale.payment_type,
-        GroupedField(
-            Sale.shop_id,
-            groups=shops_by_group,
-        ),
+    fquery = (
+        FQuery(get_search())
+        .values(
+            Count(Sale),
+        )
+        .group_by(
+            Sale.payment_type,
+            GroupedField(
+                Sale.shop_id,
+                groups=shops_by_group,
+            ),
+        )
     )
     fquery._configure_search()
 
-    result = load_output('nb_sales_by_payment_type_by_grouped_shop')
-    payment_type_buckets = result['aggregations']['payment_type']['buckets']
+    result = load_output("nb_sales_by_payment_type_by_grouped_shop")
+    payment_type_buckets = result["aggregations"]["payment_type"]["buckets"]
     payment_type_buckets = [
-        b for b in payment_type_buckets if b['key'] != 'wire_transfer']
-    result['aggregations']['payment_type']['buckets'] = payment_type_buckets
+        b for b in payment_type_buckets if b["key"] != "wire_transfer"
+    ]
+    result["aggregations"]["payment_type"]["buckets"] = payment_type_buckets
 
     lines = fquery._flatten_result(result)
     assert len(lines) == 4  # 2 payment types, 2 groups
@@ -2214,28 +2736,30 @@ def test_fill_missing_buckets_grouped_field():
 
 def test_fill_missing_buckets_grouped_field_2():
     shops_by_group = {
-        'group_a': range(1, 6),
-        'group_b': range(6, 11),
+        "group_a": range(1, 6),
+        "group_b": range(6, 11),
     }
-    fquery = FQuery(get_search()).values(
-        Count(Sale),
-    ).group_by(
-        GroupedField(
-            Sale.shop_id,
-            groups=shops_by_group,
-        ),
-        Sale.payment_type,
+    fquery = (
+        FQuery(get_search())
+        .values(
+            Count(Sale),
+        )
+        .group_by(
+            GroupedField(
+                Sale.shop_id,
+                groups=shops_by_group,
+            ),
+            Sale.payment_type,
+        )
     )
     fquery._configure_search()
 
-    result = load_output('nb_sales_by_grouped_shop_by_payment_type')
-    shop_group_buckets = result['aggregations']['shop_id']['buckets']
+    result = load_output("nb_sales_by_grouped_shop_by_payment_type")
+    shop_group_buckets = result["aggregations"]["shop_id"]["buckets"]
     shop_group_buckets = {
-        key: bucket
-        for key, bucket in shop_group_buckets.items()
-        if key != 'group_a'
+        key: bucket for key, bucket in shop_group_buckets.items() if key != "group_a"
     }
-    result['aggregations']['shop_id']['buckets'] = shop_group_buckets
+    result["aggregations"]["shop_id"]["buckets"] = shop_group_buckets
 
     lines = fquery._flatten_result(result)
     assert len(lines) == 3  # 3 payment types, 1 group

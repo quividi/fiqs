@@ -1,33 +1,33 @@
-# -*- coding: utf-8 -*-
-
 RESERVED_KEYS = [
-    'key', 'key_as_string',
-    'doc_count',
-    'from', 'from_as_string',
-    'to', 'to_as_string',
+    "key",
+    "key_as_string",
+    "doc_count",
+    "from",
+    "from_as_string",
+    "to",
+    "to_as_string",
 ]
 
 
-class ResultTree(object):
+class ResultTree:
     def __init__(self, es_result):
         if isinstance(es_result, dict):
             self.es_result = es_result
-        elif hasattr(es_result, '_d_'):
+        elif hasattr(es_result, "_d_"):
             self.es_result = es_result._d_
         else:
             raise Exception(
-                'ResultTree expects a dict or '
-                'an elasticsearch_dsl Response object')
+                "ResultTree expects a dict or " "an elasticsearch_dsl Response object"
+            )
 
     def flatten_result(self, **kwargs):
-        if 'aggregations' not in self.es_result:
+        if "aggregations" not in self.es_result:
             return []
 
-        self.add_others_line = kwargs.get('add_others_line', False)
-        self.remove_nested_aggregations = kwargs.get(
-            'remove_nested_aggregations', True)
+        self.add_others_line = kwargs.get("add_others_line", False)
+        self.remove_nested_aggregations = kwargs.get("remove_nested_aggregations", True)
 
-        aggregations = self.es_result['aggregations']
+        aggregations = self.es_result["aggregations"]
         return self._extract_lines(aggregations)
 
     def _is_nested_node(self, node, parent_is_root=True, same_level_keys=None):
@@ -36,29 +36,28 @@ class ResultTree(object):
             return False
 
         # Standard aggregation
-        if 'buckets' in node:
+        if "buckets" in node:
             return False
 
         # Bucket
-        if 'key' in node:
+        if "key" in node:
             return False
 
         # Range bucket
-        if 'from' in node or 'to' in node:
+        if "from" in node or "to" in node:
             return False
 
         # Nested nodes have a doc_count
-        if 'doc_count' not in node:
+        if "doc_count" not in node:
             return False
 
         # Can happen with filters aggregations
         if same_level_keys is not None:
-            if not parent_is_root and 'doc_count' not in same_level_keys:
+            if not parent_is_root and "doc_count" not in same_level_keys:
                 return False
 
         dict_child_nodes = [
-            child_node for child_node in node.values()
-            if isinstance(child_node, dict)
+            child_node for child_node in node.values() if isinstance(child_node, dict)
         ]
         child_keys = node.keys()
         for child_node in dict_child_nodes:
@@ -67,13 +66,11 @@ class ResultTree(object):
                 parent_is_root=False,
                 same_level_keys=child_keys,
             )
-            if 'doc_count' in child_node and not is_nested_child_node:
+            if "doc_count" in child_node and not is_nested_child_node:
                 return False
 
         # Node like {'value': 123.456}
-        if all([
-                not isinstance(child_node, dict)
-                for child_node in node.values()]):
+        if all(not isinstance(child_node, dict) for child_node in node.values()):
             return False
 
         return True
@@ -86,16 +83,17 @@ class ResultTree(object):
         for key in child_keys:
             child_node = node[key]
 
-            if key.startswith('reverse_nested'):
+            if key.startswith("reverse_nested"):
                 _node[key] = child_node
 
             elif isinstance(child_node, dict):
-                if self._is_nested_node(
-                        child_node, parent_is_root, child_keys):
-                    _node.update(self._remove_nested_aggregations(
-                        child_node,
-                        parent_is_root=False,
-                    ))
+                if self._is_nested_node(child_node, parent_is_root, child_keys):
+                    _node.update(
+                        self._remove_nested_aggregations(
+                            child_node,
+                            parent_is_root=False,
+                        )
+                    )
                 else:
                     _node[key] = self._remove_nested_aggregations(
                         child_node,
@@ -108,7 +106,8 @@ class ResultTree(object):
                         gchild_node,
                         parent_is_root=False,
                     )
-                    if isinstance(gchild_node, dict) else gchild_node
+                    if isinstance(gchild_node, dict)
+                    else gchild_node
                     for gchild_node in child_node
                 ]
 
@@ -121,34 +120,34 @@ class ResultTree(object):
         new_line = base_line.copy()
 
         for k, v in node.items():
-            if k.startswith('reverse_nested'):
+            if k.startswith("reverse_nested"):
                 for nested_k, nested_v in v.items():
                     if isinstance(nested_v, dict):
-                        value = nested_v['value']
+                        value = nested_v["value"]
                     else:
                         value = nested_v
-                    new_line['{}__{}'.format(k, nested_k)] = value
+                    new_line[f"{k}__{nested_k}"] = value
 
-            elif k == 'doc_count':
+            elif k == "doc_count":
                 new_line[k] = v
             elif k in RESERVED_KEYS:
                 continue
-            elif 'value' in v:
-                new_line[k] = v['value']
+            elif "value" in v:
+                new_line[k] = v["value"]
 
         return new_line
 
     def _create_others_line(self, base_line, key, others_doc_count):
         new_line = base_line.copy()
 
-        new_line[key] = u'others'
-        new_line[u'doc_count'] = others_doc_count
+        new_line[key] = "others"
+        new_line["doc_count"] = others_doc_count
 
         return new_line
 
     def _is_leaf(self, node):
         # If there are still buckets, we are not on a leaf
-        return 'buckets' not in node
+        return "buckets" not in node
 
     def _find_deeper_path(self, node):
         # The path should always end right before
@@ -156,8 +155,8 @@ class ResultTree(object):
         path = []
         current_key = None
 
-        path.append('buckets')
-        buckets = node['buckets']
+        path.append("buckets")
+        buckets = node["buckets"]
 
         if isinstance(buckets, list):
             path.append(0)
@@ -168,20 +167,17 @@ class ResultTree(object):
             next_node = buckets[first_key]
 
         # We find the next key if there is one
-        next_key = [k for k in next_node.keys() if k not in RESERVED_KEYS]
+        next_key = [k for k in next_node if k not in RESERVED_KEYS]
         if next_key:
             next_key = next_key[0]
-            if 'buckets' in next_node[next_key]:
+            if "buckets" in next_node[next_key]:
                 path.append(next_key)
                 current_key = next_key
 
         return path, current_key
 
     def _bootstrap_current_key(self, aggregations):
-        return sorted([
-            k for k in aggregations.keys()
-            if k not in RESERVED_KEYS
-        ])[0]
+        return sorted([k for k in aggregations if k not in RESERVED_KEYS])[0]
 
     def _extract_lines(self, aggregations):
         # Initialization
@@ -193,11 +189,8 @@ class ResultTree(object):
         node = aggregations[current_key]
 
         # Are we dealing with a metric without aggs?
-        if 'buckets' not in node and 'doc_count' not in node:
-            return [{
-                key: aggregations[key]['value']
-                for key in aggregations.keys()
-            }]
+        if "buckets" not in node and "doc_count" not in node:
+            return [{key: aggregations[key]["value"] for key in aggregations}]
 
         if self.remove_nested_aggregations:
             # We remove nested aggregations, I don't see the point
@@ -234,19 +227,21 @@ class ResultTree(object):
 
                 continue
 
-            if self.add_others_line and 'sum_other_doc_count' in node:
-                others_doc_count = node.pop('sum_other_doc_count')
+            if self.add_others_line and "sum_other_doc_count" in node:
+                others_doc_count = node.pop("sum_other_doc_count")
                 others_line = self._create_others_line(
-                    base_line, current_key, others_doc_count)
+                    base_line, current_key, others_doc_count
+                )
                 lines.append(others_line)
 
-            buckets = node['buckets']
+            buckets = node["buckets"]
 
             # If there are no more buckets, and we are at depth 0
             if not buckets and depth == 0:
                 # If there is another level 0 aggregation, we work on it
                 next_key = [
-                    k for k in aggregations.keys()
+                    k
+                    for k in aggregations
                     if k not in RESERVED_KEYS and k != current_key
                 ]
                 if next_key:
@@ -271,7 +266,8 @@ class ResultTree(object):
 
                 # Is there another aggregation at our level?
                 next_key = [
-                    k for k in parent_bucket[path[-2]].keys()
+                    k
+                    for k in parent_bucket[path[-2]]
                     if k not in RESERVED_KEYS and k != current_key
                 ]
                 if not next_key:
@@ -299,15 +295,19 @@ class ResultTree(object):
             # We need to go one level deeper
             if isinstance(buckets, list):
                 bucket = buckets[0]
-                base_line.update({
-                    current_key: bucket['key'],
-                })
+                base_line.update(
+                    {
+                        current_key: bucket["key"],
+                    }
+                )
             elif isinstance(buckets, dict):
                 first_key = sorted(buckets.keys())[0]
                 bucket = buckets[first_key]
-                base_line.update({
-                    current_key: first_key,
-                })
+                base_line.update(
+                    {
+                        current_key: first_key,
+                    }
+                )
 
             added_path, next_key = self._find_deeper_path(node)
             path += added_path

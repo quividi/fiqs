@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from collections import OrderedDict
 from itertools import product
 
@@ -24,12 +22,12 @@ def calc_group_by_keys(group_by_fields, nested=True):
     return ret
 
 
-class FQuery(object):
+class FQuery:
     def __init__(self, search, default_size=None):
         self.search = search
 
         if default_size == 0:
-            default_size = 2 ** 31 - 1
+            default_size = 2**31 - 1
         self.default_size = default_size
 
         self._expressions = OrderedDict()
@@ -62,15 +60,14 @@ class FQuery(object):
 
         return self
 
-    def eval(self, flat=True, fill_missing_buckets=True,
-             add_others_line=False):
-
+    def eval(self, flat=True, fill_missing_buckets=True, add_others_line=False):
         # Raise if computed fields are present, and we are not in flat mode
         if not flat:
             for expression in self._expressions.values():
                 if expression.is_computed():
                     raise ConfigurationError(
-                        u'Cannot use computed fields in non-flat mode')
+                        "Cannot use computed fields in non-flat mode"
+                    )
 
         search = self._configure_search()
         result = search.execute()
@@ -97,7 +94,7 @@ class FQuery(object):
             exps_to_add = {}
             expression_keys = [str(exp) for exp in self._expressions.values()]
 
-            for key, expression in self._expressions.items():
+            for expression in self._expressions.values():
                 if not expression.is_computed():
                     continue
 
@@ -113,8 +110,7 @@ class FQuery(object):
             self._expressions.update(exps_to_add)
 
     def _contains_nested_expressions(self):
-        return any(
-            [isinstance(field, NestedField) for field in self._group_by])
+        return any(isinstance(field, NestedField) for field in self._group_by)
 
     def _check_nested_parents_are_present(self):
         while True:
@@ -165,9 +161,8 @@ class FQuery(object):
 
             elif isinstance(field_or_exp, Field):
                 params = field_or_exp.bucket_params()
-                if not isinstance(field_or_exp, GroupedField)\
-                        and self.default_size:
-                    params.setdefault('size', self.default_size)
+                if not isinstance(field_or_exp, GroupedField) and self.default_size:
+                    params.setdefault("size", self.default_size)
 
             else:
                 raise NotImplementedError
@@ -177,11 +172,11 @@ class FQuery(object):
                 if self._order_by:
                     # If we're at the latest group_by, we can order by
                     if idx == last_idx:
-                        params['order'] = self._order_by
+                        params["order"] = self._order_by
                     # If the order_by is a doc count
                     # we can add it at any level
-                    elif self._order_by.keys() == ['_count']:
-                        params['order'] = self._order_by
+                    elif self._order_by.keys() == ["_count"]:
+                        params["order"] = self._order_by
 
             current_agg = current_agg.bucket(**params)
 
@@ -198,7 +193,7 @@ class FQuery(object):
                     key,
                     op,
                     field=expression.field.get_storage_field(),
-                    **expression.params
+                    **expression.params,
                 )
 
     def _flatten_result(self, result, **kwargs):
@@ -231,7 +226,7 @@ class FQuery(object):
             for key, value in pretty_line.items():
                 if key in key_to_field:
                     field = key_to_field[key]
-                    if value == u'others':
+                    if value == "others":
                         pretty_line[key] = value  # add_others_line mode
                         others_line = True
                     else:
@@ -239,7 +234,7 @@ class FQuery(object):
 
             if others_line:
                 # We make sure all metrics are present
-                for key in key_to_field.keys():
+                for key in key_to_field:
                     if key not in pretty_line:
                         pretty_line[key] = None
 
@@ -283,15 +278,12 @@ class FQuery(object):
         # We cast everything as str for easier matching
         # it won't change the type of keys in lines
         treated_hashes = [
-            u','.join(
-                [str(line[key]) for key in group_by_keys_without_nested])
+            ",".join([str(line[key]) for key in group_by_keys_without_nested])
             for line in lines
         ]
         treated_hashes = set(treated_hashes)
         missing_keys = [
-            key
-            for key in keys
-            if u','.join([str(k) for k in key]) not in treated_hashes
+            key for key in keys if ",".join([str(k) for k in key]) not in treated_hashes
         ]
 
         lines += self._create_missing_lines(
@@ -305,8 +297,7 @@ class FQuery(object):
         enums = []
 
         for field in self._group_by:
-            if isinstance(field, NestedField)\
-                    or isinstance(field, ReverseNested):
+            if isinstance(field, NestedField | ReverseNested):
                 continue
 
             if isinstance(field, Aggregate):
@@ -317,8 +308,8 @@ class FQuery(object):
                 else:
                     # We just add the lines' values
                     key = field.field.key
-                    values = set([line[key] for line in lines])
-                    values = sorted(list(values))
+                    values = {line[key] for line in lines}
+                    values = sorted(values)
                     enums.append(values)
 
             elif field.is_range():
@@ -331,8 +322,8 @@ class FQuery(object):
                 else:
                     # We add the lines' values
                     key = field.key
-                    values = set([line[key] for line in lines])
-                    values = sorted(list(values))
+                    values = {line[key] for line in lines}
+                    values = sorted(values)
                     enums.append(values)
 
         return enums
@@ -345,10 +336,10 @@ class FQuery(object):
 
         for missing_key in missing_keys:
             base_line = {}
-            for idx, group_by_key in enumerate(group_by_keys):
+            for idx, _ in enumerate(group_by_keys):
                 current_key = group_by_keys[idx]
                 value = missing_key[idx]
-                if hasattr(value, 'original_value'):  # In case of Choices
+                if hasattr(value, "original_value"):  # In case of Choices
                     value = value.original_value
                 base_line[current_key] = value
 
@@ -365,6 +356,6 @@ class FQuery(object):
             else:
                 empty_line[key] = None
 
-        empty_line['doc_count'] = 0
+        empty_line["doc_count"] = 0
 
         return empty_line

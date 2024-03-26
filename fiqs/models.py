@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from elasticsearch_dsl import Mapping, Nested
 from six import with_metaclass
 
@@ -9,7 +7,7 @@ from fiqs.fields import Field, NestedField
 
 class ModelMetaClass(type):
     def __new__(cls, name, bases, attrs):
-        klass = super(ModelMetaClass, cls).__new__(cls, name, bases, attrs)
+        klass = super().__new__(cls, name, bases, attrs)
 
         # We initialize the current class fields
         fields = []
@@ -30,8 +28,9 @@ class ModelMetaClass(type):
             for field in p._fields:
                 if field.key in field_keys:
                     msg = (
-                        'Field {} from class {} clashes with field '
-                        'with the same name in base class {}')
+                        "Field {} from class {} clashes with field "
+                        "with the same name in base class {}"
+                    )
                     msg = msg.format(field.key, klass, p)
                     raise FieldError(msg)
 
@@ -55,21 +54,21 @@ class Model(with_metaclass(ModelMetaClass, object)):
     @classmethod
     def get_index(cls, *args, **kwargs):
         if not cls.index:
-            raise NotImplementedError('Model class should define an index')
+            raise NotImplementedError("Model class should define an index")
 
         return cls.index
 
     @classmethod
     def get_doc_type(cls, *args, **kwargs):
         if not cls.doc_type:
-            raise NotImplementedError('Model class should define a doc_type')
+            raise NotImplementedError("Model class should define a doc_type")
 
         return cls.doc_type
 
     @classmethod
     def get_mapping(cls):
         m = Mapping()
-        m.meta('dynamic', 'strict')
+        m.meta("dynamic", "strict")
 
         nested_properties = {}
         fields_to_nest = []
@@ -91,8 +90,8 @@ class Model(with_metaclass(ModelMetaClass, object)):
             # Sanity check
             if field.parent not in nested_properties:
                 raise Exception(
-                    'Nested field {} needs to be defined in {}'.format(
-                        field.parent, str(cls)))
+                    f"Nested field {field.parent} needs to be defined in {cls!s}"
+                )
 
             _, properties = nested_properties[field.parent]
             properties[field.storage_field] = field.type
