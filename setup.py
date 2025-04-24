@@ -3,7 +3,7 @@ from os.path import dirname, join
 from setuptools import find_packages, setup
 from setuptools.command.sdist import sdist
 
-VERSION = (0, 8, 5)
+VERSION = (0, 9, 0)
 __version__ = VERSION
 __versionstr__ = ".".join(map(str, VERSION))
 
@@ -14,8 +14,8 @@ f.close()
 
 
 install_requires = [
-    "elasticsearch>=8.0.0,<9.0.0",
-    "elasticsearch-dsl>=8.0.0,<9.0.0",
+    "elasticsearch>=8.0.0,<10.0.0",
+    "elasticsearch-dsl>=8.0.0,<10.0.0",
 ]
 setup_requires = [
     "Babel>=2.14.0",
