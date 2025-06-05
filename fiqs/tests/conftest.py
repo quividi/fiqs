@@ -4,7 +4,7 @@ import time
 
 import pytest
 from elasticsearch.helpers import bulk
-from elasticsearch_dsl import Mapping, Nested
+from elasticsearch.dsl import Mapping, Nested
 
 from fiqs.testing.utils import get_client
 

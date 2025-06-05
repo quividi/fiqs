@@ -178,7 +178,7 @@ A field with the ``nested`` Elasticsearch data type.
 Mapping
 *******
 
-Model classes expose a ``get_mapping`` class method, that returns a strict and dynamic `elasticsearch-dsl Mapping object <http://elasticsearch-dsl.readthedocs.io/en/latest/persistence.html#mappings>`_. You can use it to create or update the mapping in your Elasticsearch cluster::
+Model classes expose a ``get_mapping`` class method, that returns a strict and dynamic `elasticsearch.dsl Mapping object <https://elasticsearch-py.readthedocs.io/en/stable/dsl.html#mapping>`_. You can use it to create or update the mapping in your Elasticsearch cluster::
 
     from elasticsearch import Elasticsearch
 

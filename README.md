@@ -4,10 +4,9 @@ fiqs
 [![Build Status](https://travis-ci.org/pmourlanne/fiqs.svg?branch=master)](https://travis-ci.org/pmourlanne/fiqs)
 
 fiqs is an opinionated high-level library whose goal is to help you write concise queries
-agains Elasticsearch and better consume the results. It is built on top of the awesome [Elasticsearch
-DSL](<https://github.com/elastic/elasticsearch-dsl-py>) library.
+agains Elasticsearch and better consume the results. It is built on top of the awesome [Elasticsearch](<https://github.com/elastic/elasticsearch-py>) library.
 
-fiqs exposes a ``flatten_result`` function which transforms an elasticsearch-dsl ``Result``, or a dictionary, into the list of its nodes.
+fiqs exposes a ``flatten_result`` function which transforms an elasticsearch.dsl ``Result``, or a dictionary, into the list of its nodes.
 fiqs also lets you create Model classes, a la Django, which automatically generates an Elasticsearch mapping.
 Finally fiqs exposes a ``FQuery`` objects which, leveraging your models, lets you write less verbose queries against Elasticsearch.
 
@@ -49,7 +48,7 @@ You define a model, matching what is in your Elasticsearch cluster:
 You can then write clean queries:
 
 ```python
-    from elasticsearch_dsl import Search
+    from elasticsearch.dsl import Search
     from fiqs.aggregations import Sum
     from fiqs.query import FQuery
 

@@ -1,5 +1,5 @@
 from elasticsearch import Elasticsearch
-from elasticsearch_dsl import Search
+from elasticsearch.dsl import Search
 
 
 def get_client():

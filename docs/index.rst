@@ -1,7 +1,7 @@
 fiqs
 ====
 
-fiqs helps you make queries against Elasticsearch, and more easily consume the results. It is built on top of the official `Python Elasticsearch client <https://elasticsearch-py.readthedocs.io>`_ and the great `Elasticsearch DSL <http://elasticsearch-dsl.readthedocs.io>`_ library.
+fiqs helps you make queries against Elasticsearch, and more easily consume the results. It is built on top of the official `Python Elasticsearch client <https://elasticsearch-py.readthedocs.io>`_ and the great `Elasticsearch <https://elasticsearch-py.readthedocs.io/>`_ library.
 
 You can still dive closer to the Elasticsearch JSON DSL by accessing the Elasticsearch DSL client or even the Elasticsearch python client.
 

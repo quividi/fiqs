@@ -5,15 +5,15 @@ Making queries with fiqs
 The ``FQuery`` object
 *********************
 
-fiqs exposes a ``FQuery`` object which lets you write less verbose simple queries against ElasticSearch. It is built on top of the `elasticsearch-dsl Search object <http://elasticsearch-dsl.readthedocs.io/en/latest/search_dsl.html#the-search-object>`_. Here is a quick example of what ``FQuery`` can do, compared to elasticsearch-dsl::
+fiqs exposes a ``FQuery`` object which lets you write less verbose simple queries against ElasticSearch. It is built on top of the `elasticsearch.dsl Search object <https://elasticsearch-py.readthedocs.io/en/stable/dsl.html#search>`_. Here is a quick example of what ``FQuery`` can do, compared to elasticsearch.dsl::
 
-    from elasticsearch_dsl import Search
+    from elasticsearch.dsl import Search
     from fiqs.aggregations import Sum
     from fiqs.query import FQuery
 
     from .models import Sale
 
-    # The elasticsearch-dsl way
+    # The elasticsearch.dsl way
     search = Search(...)
     search.aggs.bucket(
         'shop_id', 'terms', field='shop_id',
@@ -44,7 +44,7 @@ Let's start with a warning :> FQuery may allow you to write cleaner and more re-
 ``FQuery`` options
 ^^^^^^^^^^^^^^^^^^
 
-A ``FQuery`` object only needs an elasticsearch-dsl object to get started. You may also configure the following options:
+A ``FQuery`` object only needs an elasticsearch.dsl object to get started. You may also configure the following options:
 
     * ``default_size``: the `size <https://www.elastic.co/guide/en/elasticsearch/reference/current/search-aggregations-bucket-terms-aggregation.html#_size>`_ used by default in aggregations built by this object.
 
@@ -54,7 +54,7 @@ A ``FQuery`` object only needs an elasticsearch-dsl object to get started. You m
 
 To execute the Elasticsearch query, you need to call ``eval`` on the FQuery object. This call accepts the following arguments:
 
-    * ``flat``: If `False`, will return the elasticsearch-dsl `Result` object, without flattening the result. Note that you cannot ask for a flat result if you used computed expressions. `True` by default.
+    * ``flat``: If `False`, will return the elasticsearch.dsl `Result` object, without flattening the result. Note that you cannot ask for a flat result if you used computed expressions. `True` by default.
 
     * ``fill_missing_buckets``: If `False`, FQuery will not try to fill the missing buckets. For more details see `Filling missing buckets`_. Note that fiqs cannot fill the missing buckets in non flat mode. `True` by default.
 

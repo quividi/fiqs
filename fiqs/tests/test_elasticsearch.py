@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import pytest
-from elasticsearch_dsl import A
+from elasticsearch.dsl import A
 
 from fiqs.aggregations import (
     Avg,
@@ -768,7 +768,7 @@ def test_avg_sales_by_grouped_shop(elasticsearch_sale, shops_by_group):
     )
 
 
-# All these filter tests still use elasticsearch_dsl (for the time being?)
+# All these filter tests still use elasticsearch.dsl (for the time being?)
 def test_avg_price_filter_shop_id_1(elasticsearch_sale):
     # Avg price for shop_id 1
     a = A("filter", term={"shop_id": 1})

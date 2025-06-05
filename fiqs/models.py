@@ -1,4 +1,4 @@
-from elasticsearch_dsl import Mapping, Nested
+from elasticsearch.dsl import Mapping, Nested
 from six import with_metaclass
 
 from fiqs.exceptions import FieldError

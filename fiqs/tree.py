@@ -17,7 +17,7 @@ class ResultTree:
             self.es_result = es_result._d_
         else:
             raise Exception(
-                "ResultTree expects a dict or " "an elasticsearch_dsl Response object"
+                "ResultTree expects a dict or " "an elasticsearch.dsl Response object"
             )
 
     def flatten_result(self, **kwargs):
