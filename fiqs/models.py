@@ -1,5 +1,4 @@
 from elasticsearch.dsl import Mapping, Nested
-from six import with_metaclass
 
 from fiqs.exceptions import FieldError
 from fiqs.fields import Field, NestedField
@@ -28,10 +27,9 @@ class ModelMetaClass(type):
             for field in p._fields:
                 if field.key in field_keys:
                     msg = (
-                        "Field {} from class {} clashes with field "
-                        "with the same name in base class {}"
+                        f"Field {field.key} from class {klass} clashes with field "
+                        f"with the same name in base class {p}"
                     )
-                    msg = msg.format(field.key, klass, p)
                     raise FieldError(msg)
 
                 copy_field = field.get_copy()
@@ -47,7 +45,7 @@ class ModelMetaClass(type):
         return klass
 
 
-class Model(with_metaclass(ModelMetaClass, object)):
+class Model(metaclass=ModelMetaClass):
     index = None
     doc_type = None
 

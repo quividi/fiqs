@@ -1,4 +1,4 @@
-RESERVED_KEYS = [
+RESERVED_KEYS = frozenset({
     "key",
     "key_as_string",
     "doc_count",
@@ -6,7 +6,7 @@ RESERVED_KEYS = [
     "from_as_string",
     "to",
     "to_as_string",
-]
+})
 
 
 class ResultTree:
@@ -162,7 +162,7 @@ class ResultTree:
             path.append(0)
             next_node = buckets[0]
         elif isinstance(buckets, dict):
-            first_key = sorted(buckets.keys())[0]
+            first_key = min(buckets)
             path.append(first_key)
             next_node = buckets[first_key]
 
@@ -301,7 +301,7 @@ class ResultTree:
                     }
                 )
             elif isinstance(buckets, dict):
-                first_key = sorted(buckets.keys())[0]
+                first_key = min(buckets)
                 bucket = buckets[first_key]
                 base_line.update(
                     {

@@ -1,4 +1,3 @@
-from collections import OrderedDict
 from itertools import product
 
 from fiqs import flatten_result
@@ -30,14 +29,14 @@ class FQuery:
             default_size = 2**31 - 1
         self.default_size = default_size
 
-        self._expressions = OrderedDict()
+        self._expressions = {}
         self._group_by = []
         self._order_by = {}
 
     def values(self, *expressions, **named_expressions):
         # /!\ named_expressions may not be correctly ordered
         # It may break some Operation fields
-        exps = OrderedDict()
+        exps = {}
         for exp in expressions:
             exps[str(exp)] = exp
 
@@ -92,7 +91,7 @@ class FQuery:
     def _check_exps_for_computed_are_present(self):
         while True:
             exps_to_add = {}
-            expression_keys = [str(exp) for exp in self._expressions.values()]
+            expression_keys = {str(exp) for exp in self._expressions.values()}
 
             for expression in self._expressions.values():
                 if not expression.is_computed():
@@ -102,7 +101,7 @@ class FQuery:
                 for op in operands:
                     if str(op) not in expression_keys:
                         exps_to_add[str(op)] = op
-                        expression_keys.append(str(op))
+                        expression_keys.add(str(op))
 
             if not exps_to_add:
                 break
@@ -243,7 +242,7 @@ class FQuery:
         return pretty_lines
 
     def _add_computed_results(self, line):
-        computed_expressions = []
+        computed_expressions = set()
 
         while True:
             expressions_to_compute = []
@@ -263,7 +262,7 @@ class FQuery:
             for key, expression in expressions_to_compute:
                 try:
                     line[key] = expression.compute_one(line)
-                    computed_expressions.append(key)
+                    computed_expressions.add(key)
                 except KeyError:
                     pass
 

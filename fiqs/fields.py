@@ -1,5 +1,4 @@
-import copy
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fiqs.i18n import _
 
@@ -46,16 +45,9 @@ class Field:
 
     def __repr__(self):
         if hasattr(self, "model"):
-            return "<{}: {}.{}>".format(
-                self.__class__.__name__,
-                self.model.__name__,
-                self.key,
-            )
+            return f"<{self.__class__.__name__}: {self.model.__name__}.{self.key}>"
 
-        return "<{}: {}>".format(
-            self.__class__.__name__,
-            self.key,
-        )
+        return f"<{self.__class__.__name__}: {self.key}>"
 
     def _set_key(self, key):
         self.key = key
@@ -69,10 +61,7 @@ class Field:
         if not parent_field:
             return self.storage_field
 
-        return "{}.{}".format(
-            parent_field.get_storage_field(),
-            self.storage_field,
-        )
+        return f"{parent_field.get_storage_field()}.{self.storage_field}"
 
     def bucket_params(self):
         d = {
@@ -185,7 +174,7 @@ class DateField(Field):
 
     def get_casted_value(self, v):
         # Careful, we lose the milliseconds here
-        return datetime.utcfromtimestamp(v / 1000)
+        return datetime.fromtimestamp(v / 1000, tz=timezone.utc).replace(tzinfo=None)
 
 
 class BaseIntegerField(Field):
@@ -296,7 +285,7 @@ class NestedField(Field):
 class FieldWithChoices(Field):
     def __init__(self, field, choices=None):
         choices = choices or ()
-        data = copy.deepcopy(field.data)
+        data = field.data.copy()
         return super().__init__(
             field.type,
             key=field.key,
@@ -312,7 +301,7 @@ class FieldWithChoices(Field):
 
 class FieldWithRanges(Field):
     def __init__(self, field, ranges=None):
-        data = copy.deepcopy(field.data)
+        data = field.data.copy()
 
         if ranges is not None:
             data["ranges"] = ranges
@@ -332,7 +321,7 @@ class FieldWithRanges(Field):
 
 class DataExtendedField(Field):
     def __init__(self, field, **kwargs):
-        data = copy.deepcopy(field.data)
+        data = field.data.copy()
         data.update(**kwargs)
         return super().__init__(
             field.type,

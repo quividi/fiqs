@@ -1,5 +1,5 @@
-from collections import OrderedDict
-from datetime import datetime, timedelta
+import functools
+from datetime import datetime, timedelta, timezone
 
 from fiqs.exceptions import MissingParameterException
 from fiqs.fields import Field
@@ -144,8 +144,6 @@ TIME_UNIT_CONVERSION = {
 def is_interval_standard(interval):
     return any(interval.endswith(key) for key in TIME_UNIT_CONVERSION)
 
-    return False
-
 
 def is_interval_yearly(interval):
     # Naive approach
@@ -254,7 +252,7 @@ def get_rounded_date_from_timedelta(d, delta):
     delta_seconds = int(delta.total_seconds())
 
     rounded_nb_seconds = (nb_seconds // delta_seconds) * delta_seconds
-    return datetime.utcfromtimestamp(rounded_nb_seconds)
+    return datetime.fromtimestamp(rounded_nb_seconds, tz=timezone.utc).replace(tzinfo=None)
 
 
 class DateHistogram(Histogram):
@@ -383,7 +381,7 @@ class DateRange(Aggregate):
 
     def _format_date_range(self, date_range):
         start, end = date_range["from"], date_range["to"]
-        return "{}-{}".format(self._format_date(start), self._format_date(end))
+        return f"{self._format_date(start)}-{self._format_date(end)}"
 
     def choice_keys(self):
         keys = []
@@ -412,7 +410,7 @@ class ReverseNested(Metric):
         elif issubclass(path_or_field_or_model, Model):
             self.path = "root"
 
-        self._expressions = OrderedDict()
+        self._expressions = {}
         for exp in expressions:
             self._expressions[str(exp)] = exp
         self._expressions.update(named_expressions)
@@ -449,7 +447,7 @@ class ReverseNested(Metric):
                     **expression.params,
                 )
 
-    @property
+    @functools.cached_property
     def expressions(self):
         return {
             f"reverse_nested_{self.path}__{key}": expression
