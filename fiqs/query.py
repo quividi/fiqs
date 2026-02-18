@@ -282,11 +282,13 @@ class FQuery:
 
         keys = list(product(*enums)) if enums else []
         group_by_keys_without_nested = self._group_by_keys(nested=False)
+        # Use str() on both sides to handle type mismatches between choice keys
+        # (e.g. integer group keys) and ES result values (always strings for filter buckets)
         treated_hashes = {
-            tuple(line[key] for key in group_by_keys_without_nested)
+            tuple(str(line[key]) for key in group_by_keys_without_nested)
             for line in lines
         }
-        missing_keys = [key for key in keys if key not in treated_hashes]
+        missing_keys = [key for key in keys if tuple(str(k) for k in key) not in treated_hashes]
 
         lines += self._create_missing_lines(
             missing_keys,

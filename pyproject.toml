@@ -1,6 +1,6 @@
 [project]
 name = "fiqs"
-version = "0.9.5"
+version = "0.9.6"
 description = "Python client for Elasticsearch built on top of elasticsearch"
 readme = "README.md"
 license = "MIT"
