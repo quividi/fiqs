@@ -1,9 +1,13 @@
+import os
+
 from elasticsearch import Elasticsearch
 from elasticsearch.dsl import Search
 
+FIQS_ES_URL = os.environ.get("FIQS_ES_URL", "http://localhost:9201")
+
 
 def get_client():
-    return Elasticsearch(["http://localhost:8200"], request_timeout=60)
+    return Elasticsearch([FIQS_ES_URL], request_timeout=60)
 
 
 def get_search(client=None, indices=None):
