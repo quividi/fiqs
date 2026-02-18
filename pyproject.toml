@@ -1,6 +1,6 @@
 [project]
 name = "fiqs"
-version = "0.9.4"
+version = "0.9.5"
 description = "Python client for Elasticsearch built on top of elasticsearch"
 readme = "README.md"
 license = "MIT"
@@ -9,7 +9,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "elasticsearch>=8.18.0,<10.0.0",
+    "elasticsearch>=9.3.0,<10.0.0",
 ]
 
 [project.urls]
@@ -17,10 +17,10 @@ Homepage = "https://github.com/pmourlanne/fiqs"
 
 [dependency-groups]
 dev = [
-    "Faker==24.4.0",
-    "pytest==8.1.1",
-    "pytest-cov==5.0.0",
-    "sh==2.0.6",
+    "Faker==40.4.0",
+    "pytest==9.0.2",
+    "pytest-cov==7.0.0",
+    "sh==2.2.2",
 ]
 
 [build-system]
