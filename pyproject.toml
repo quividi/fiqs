@@ -1,6 +1,6 @@
 [project]
 name = "fiqs"
-version = "0.9.3"
+version = "0.9.4"
 description = "Python client for Elasticsearch built on top of elasticsearch"
 readme = "README.md"
 license = "MIT"
@@ -9,7 +9,6 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "Babel>=2.14.0",
     "elasticsearch>=8.18.0,<10.0.0",
 ]
 
