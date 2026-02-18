@@ -8,7 +8,7 @@ from fiqs.models import Model
 
 class Metric:
     def is_field_agg(self):
-        return NotImplemented
+        return False
 
     def is_doc_count(self):
         return False
@@ -46,14 +46,13 @@ class Aggregate(Metric):
     def __init__(self, field, **kwargs):
         self.field = field
         self.params = kwargs
+        self._str = f"{field.model.__name__.lower()}__{field.key}__{self.__class__.__name__.lower()}"
 
     def is_field_agg(self):
         return True
 
     def __str__(self):
-        model = self.field.model.__name__.lower()
-        op = self.__class__.__name__.lower()
-        return f"{model}__{self.field.key}__{op}"
+        return self._str
 
     def agg_params(self):
         params = {
@@ -173,7 +172,7 @@ def get_timedelta_from_interval(interval):
     # Some intervals are still missing: year, month, week
     for key, param in TIME_UNIT_CONVERSION.items():
         if interval.endswith(key):
-            value = interval.rstrip(key)
+            value = interval.removesuffix(key)
             if not value:
                 value = "1"
 
@@ -189,10 +188,10 @@ def get_timedelta_from_interval(interval):
 def get_timedelta_from_timestring(timestring):
     if timestring.startswith("-"):
         minus = True
-        timestring = timestring.lstrip("-")
+        timestring = timestring.removeprefix("-")
     elif timestring.startswith("+"):
         minus = False
-        timestring = timestring.lstrip("+")
+        timestring = timestring.removeprefix("+")
     else:
         minus = False
 
@@ -281,9 +280,8 @@ class DateHistogram(Histogram):
             return None
 
         start = get_rounded_date_from_interval(self.min, self.interval)
-        agg_params = self.agg_params()
-        if "offset" in agg_params:
-            start = get_offset_date(start, agg_params["offset"])
+        if "offset" in self.params:
+            start = get_offset_date(start, self.params["offset"])
 
         end = self.max
 
@@ -314,7 +312,7 @@ class DateHistogram(Histogram):
         return choice_keys
 
     def _choice_keys_yearly(self, start, end, interval):
-        nb_years = int(interval.rstrip("y"))
+        nb_years = int(interval.removesuffix("y") or "1")
 
         choice_keys = []
         current = start
@@ -332,7 +330,7 @@ class DateHistogram(Histogram):
         return choice_keys
 
     def _choice_keys_monthly(self, start, end, interval):
-        nb_months = int(interval.rstrip("M"))
+        nb_months = int(interval.removesuffix("M") or "1")
 
         choice_keys = []
         current = start
@@ -350,7 +348,7 @@ class DateHistogram(Histogram):
         return choice_keys
 
     def _choice_keys_weekly(self, start, end, interval):
-        nb_weeks = int(interval.rstrip("w"))
+        nb_weeks = int(interval.removesuffix("w") or "1")
 
         choice_keys = []
         current = start
@@ -414,10 +412,11 @@ class ReverseNested(Metric):
         for exp in expressions:
             self._expressions[str(exp)] = exp
         self._expressions.update(named_expressions)
+        keys = "__".join(self._expressions.keys())
+        self._str = f"reverse_nested_{self.path}__{keys}"
 
     def __str__(self):
-        keys = "__".join(self._expressions.keys())
-        return f"reverse_nested_{self.path}__{keys}"
+        return self._str
 
     def reverse_agg_params(self):
         params = {
@@ -516,15 +515,18 @@ class Ratio(Operation):
 
         self.dividend = dividend
         self.divisor = divisor
+        self._dividend_key = str(dividend)
+        self._divisor_key = str(divisor)
+        self._str = f"{self._dividend_key}__div__{self._divisor_key}"
 
     def __str__(self):
-        return f"{self.dividend}__div__{self.divisor}"
+        return self._str
 
     def compute_one(self, row):
-        dividend = row[str(self.dividend)]
+        dividend = row[self._dividend_key]
 
         if not self.divisor.is_computed():
-            divisor = row[str(self.divisor)]
+            divisor = row[self._divisor_key]
         else:
             divisor = self.divisor.compute_one(row)
 
@@ -532,26 +534,28 @@ class Ratio(Operation):
 
 
 class Addition(Operation):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self._operand_keys = [op._str for op in self._operands]
+        self._str = "__add__".join(self._operand_keys)
+
     def __str__(self):
-        return "__add__".join([f"{op}" for op in self.operands])
+        return self._str
 
     def compute_one(self, row):
-        keys = [str(op) for op in self.operands]
-        return add_or_none([row[key] for key in keys])
+        return add_or_none([row[key] for key in self._operand_keys])
 
 
 class Subtraction(Operation):
     def __init__(self, minuend, subtraend):
         super().__init__(minuend, subtraend)
 
-        self.minuend = minuend
-        self.subtraend = subtraend
+        self._minuend_key = str(minuend)
+        self._subtraend_key = str(subtraend)
+        self._str = f"{self._minuend_key}__sub__{self._subtraend_key}"
 
     def __str__(self):
-        return f"{self.minuend}__sub__{self.subtraend}"
+        return self._str
 
     def compute_one(self, row):
-        key_a = str(self.minuend)
-        key_b = str(self.subtraend)
-
-        return sub_or_none(row[key_a], row[key_b])
+        return sub_or_none(row[self._minuend_key], row[self._subtraend_key])

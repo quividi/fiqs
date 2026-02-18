@@ -10,7 +10,7 @@ class ModelMetaClass(type):
 
         # We initialize the current class fields
         fields = []
-        field_keys = []
+        field_keys = set()
         for field_key, field in attrs.items():
             if isinstance(field, Field):
                 # We set the field's key
@@ -19,7 +19,7 @@ class ModelMetaClass(type):
                 field.model = klass
 
                 fields.append(field)
-                field_keys.append(field_key)
+                field_keys.add(field_key)
 
         # We do the same for the fields from the parent
         parents = [b for b in bases if isinstance(b, ModelMetaClass)]
@@ -38,7 +38,7 @@ class ModelMetaClass(type):
                 setattr(klass, field.key, copy_field)
 
                 fields.append(copy_field)
-                field_keys.append(copy_field.key)
+                field_keys.add(copy_field.key)
 
         klass._fields = fields
 

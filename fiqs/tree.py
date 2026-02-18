@@ -56,11 +56,10 @@ class ResultTree:
             if not parent_is_root and "doc_count" not in same_level_keys:
                 return False
 
-        dict_child_nodes = [
-            child_node for child_node in node.values() if isinstance(child_node, dict)
-        ]
         child_keys = node.keys()
-        for child_node in dict_child_nodes:
+        for child_node in node.values():
+            if not isinstance(child_node, dict):
+                continue
             is_nested_child_node = self._is_nested_node(
                 child_node,
                 parent_is_root=False,
@@ -80,6 +79,7 @@ class ResultTree:
 
         # We force an ordering to have a deterministic result
         child_keys = sorted(node.keys(), reverse=True)
+        child_keys_set = frozenset(node.keys())
         for key in child_keys:
             child_node = node[key]
 
@@ -87,7 +87,7 @@ class ResultTree:
                 _node[key] = child_node
 
             elif isinstance(child_node, dict):
-                if self._is_nested_node(child_node, parent_is_root, child_keys):
+                if self._is_nested_node(child_node, parent_is_root, child_keys_set):
                     _node.update(
                         self._remove_nested_aggregations(
                             child_node,
@@ -132,7 +132,7 @@ class ResultTree:
                 new_line[k] = v
             elif k in RESERVED_KEYS:
                 continue
-            elif "value" in v:
+            elif isinstance(v, dict) and "value" in v:
                 new_line[k] = v["value"]
 
         return new_line
@@ -167,9 +167,8 @@ class ResultTree:
             next_node = buckets[first_key]
 
         # We find the next key if there is one
-        next_key = [k for k in next_node if k not in RESERVED_KEYS]
+        next_key = next((k for k in next_node if k not in RESERVED_KEYS), None)
         if next_key:
-            next_key = next_key[0]
             if "buckets" in next_node[next_key]:
                 path.append(next_key)
                 current_key = next_key
@@ -177,7 +176,7 @@ class ResultTree:
         return path, current_key
 
     def _bootstrap_current_key(self, aggregations):
-        return sorted([k for k in aggregations if k not in RESERVED_KEYS])[0]
+        return min(k for k in aggregations if k not in RESERVED_KEYS)
 
     def _extract_lines(self, aggregations):
         # Initialization
@@ -239,15 +238,14 @@ class ResultTree:
             # If there are no more buckets, and we are at depth 0
             if not buckets and depth == 0:
                 # If there is another level 0 aggregation, we work on it
-                next_key = [
-                    k
-                    for k in aggregations
-                    if k not in RESERVED_KEYS and k != current_key
-                ]
+                next_key = next(
+                    (k for k in aggregations if k not in RESERVED_KEYS and k != current_key),
+                    None,
+                )
                 if next_key:
                     aggregations.pop(current_key)
                     base_line.pop(current_key)
-                    current_key = next_key[0]
+                    current_key = next_key
                     path = [current_key]
                     continue
 
@@ -265,11 +263,14 @@ class ResultTree:
                     parent_bucket = parent_bucket[key]
 
                 # Is there another aggregation at our level?
-                next_key = [
-                    k
-                    for k in parent_bucket[path[-2]]
-                    if k not in RESERVED_KEYS and k != current_key
-                ]
+                next_key = next(
+                    (
+                        k
+                        for k in parent_bucket[path[-2]]
+                        if k not in RESERVED_KEYS and k != current_key
+                    ),
+                    None,
+                )
                 if not next_key:
                     # No, we delete whole bucket
                     del parent_bucket[path[-2]]
@@ -286,7 +287,7 @@ class ResultTree:
 
                     # We update the path and the current_key
                     path.pop()  # current_key
-                    current_key = next_key[0]
+                    current_key = next_key
                     path.append(current_key)
 
                 # We go again

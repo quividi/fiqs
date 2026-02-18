@@ -1,3 +1,4 @@
+import math
 from itertools import product
 
 from fiqs import flatten_result
@@ -32,6 +33,7 @@ class FQuery:
         self._expressions = {}
         self._group_by = []
         self._order_by = {}
+        self._computed_order = None
 
     def values(self, *expressions, **named_expressions):
         # /!\ named_expressions may not be correctly ordered
@@ -42,6 +44,7 @@ class FQuery:
 
         exps.update(named_expressions)
         self._expressions.update(exps)
+        self._computed_order = None  # invalidate cached order when expressions change
 
         self._check_exps_for_computed_are_present()
 
@@ -89,24 +92,15 @@ class FQuery:
     # Internal API #
     ################
     def _check_exps_for_computed_are_present(self):
-        while True:
-            exps_to_add = {}
-            expression_keys = {str(exp) for exp in self._expressions.values()}
-
-            for expression in self._expressions.values():
-                if not expression.is_computed():
-                    continue
-
-                operands = expression.operands
-                for op in operands:
-                    if str(op) not in expression_keys:
-                        exps_to_add[str(op)] = op
-                        expression_keys.add(str(op))
-
-            if not exps_to_add:
-                break
-
-            self._expressions.update(exps_to_add)
+        queue = [exp for exp in self._expressions.values() if exp.is_computed()]
+        while queue:
+            expression = queue.pop()
+            for op in expression.operands:
+                op_key = str(op)
+                if op_key not in self._expressions:
+                    self._expressions[op_key] = op
+                    if op.is_computed():
+                        queue.append(op)
 
     def _contains_nested_expressions(self):
         return any(isinstance(field, NestedField) for field in self._group_by)
@@ -114,6 +108,8 @@ class FQuery:
     def _check_nested_parents_are_present(self):
         while True:
             nested_fields_to_add = {}
+            queued_parents = set()
+            group_by_set = set(self._group_by)
 
             for idx, field in enumerate(self._group_by):
                 if not isinstance(field, Field):
@@ -123,13 +119,14 @@ class FQuery:
                 if not parent_field:
                     continue
 
-                if parent_field in self._group_by:
+                if parent_field in group_by_set:
                     continue
 
-                if parent_field in nested_fields_to_add.values():
+                if parent_field in queued_parents:
                     continue
 
                 nested_fields_to_add[idx] = parent_field
+                queued_parents.add(parent_field)
 
             if not nested_fields_to_add:
                 break
@@ -168,14 +165,10 @@ class FQuery:
 
             if isinstance(field_or_exp, Field):
                 # /!\ TODO: not working with two group_by
-                if self._order_by:
-                    # If we're at the latest group_by, we can order by
-                    if idx == last_idx:
-                        params["order"] = self._order_by
-                    # If the order_by is a doc count
-                    # we can add it at any level
-                    elif self._order_by.keys() == ["_count"]:
-                        params["order"] = self._order_by
+                if self._order_by and (
+                    idx == last_idx or set(self._order_by) == {"_count"}
+                ):
+                    params["order"] = self._order_by
 
             current_agg = current_agg.bucket(**params)
 
@@ -241,49 +234,59 @@ class FQuery:
 
         return pretty_lines
 
-    def _add_computed_results(self, line):
-        computed_expressions = set()
+    def _build_computed_order(self):
+        """Topologically sort computed expressions so each can be evaluated in one pass."""
+        computed = {k: v for k, v in self._expressions.items() if v.is_computed()}
+        computed_key_set = set(computed)
 
-        while True:
-            expressions_to_compute = []
+        order = []
+        resolved = set()
+        remaining = list(computed.items())
 
-            for key, expression in self._expressions.items():
-                if not expression.is_computed():
-                    continue
-
-                if key in computed_expressions:
-                    continue
-
-                expressions_to_compute.append((key, expression))
-
-            if not expressions_to_compute:
+        while remaining:
+            prev_len = len(remaining)
+            next_remaining = []
+            for key, expr in remaining:
+                blocking = (
+                    {str(op) for op in expr.operands if str(op) in computed_key_set}
+                    - resolved
+                )
+                if not blocking:
+                    order.append((key, expr))
+                    resolved.add(key)
+                else:
+                    next_remaining.append((key, expr))
+            remaining = next_remaining
+            if len(remaining) == prev_len:
+                # No progress — circular deps, add rest in current order
+                order.extend(remaining)
                 break
 
-            for key, expression in expressions_to_compute:
-                try:
-                    line[key] = expression.compute_one(line)
-                    computed_expressions.add(key)
-                except KeyError:
-                    pass
+        return order
+
+    def _add_computed_results(self, line):
+        if self._computed_order is None:
+            self._computed_order = self._build_computed_order()
+        for key, expression in self._computed_order:
+            try:
+                line[key] = expression.compute_one(line)
+            except KeyError:
+                pass
 
     def _add_missing_lines(self, lines):
         enums = self._get_field_enums(lines)
 
-        keys = list(product(*enums)) if enums else []
-        if len(keys) == len(lines):
+        expected = math.prod(len(e) for e in enums) if enums else 0
+        if expected == len(lines):
             return lines
 
+        keys = list(product(*enums)) if enums else []
         group_by_keys_without_nested = self._group_by_keys(nested=False)
-        # We cast everything as str for easier matching
-        # it won't change the type of keys in lines
-        treated_hashes = [
-            ",".join([str(line[key]) for key in group_by_keys_without_nested])
+        treated_hashes = {
+            tuple(line[key] for key in group_by_keys_without_nested)
             for line in lines
-        ]
-        treated_hashes = set(treated_hashes)
-        missing_keys = [
-            key for key in keys if ",".join([str(k) for k in key]) not in treated_hashes
-        ]
+        }
+        missing_keys = [key for key in keys if key not in treated_hashes]
 
         lines += self._create_missing_lines(
             missing_keys,
@@ -300,8 +303,9 @@ class FQuery:
                 continue
 
             if isinstance(field, Aggregate):
-                if field.choice_keys():
-                    enums.append(field.choice_keys())
+                choice_keys = field.choice_keys()
+                if choice_keys:
+                    enums.append(choice_keys)
                 elif field.field.choices:
                     enums.append(field.field.choice_keys())
                 else:
@@ -335,9 +339,7 @@ class FQuery:
 
         for missing_key in missing_keys:
             base_line = {}
-            for idx, _ in enumerate(group_by_keys):
-                current_key = group_by_keys[idx]
-                value = missing_key[idx]
+            for current_key, value in zip(group_by_keys, missing_key):
                 if hasattr(value, "original_value"):  # In case of Choices
                     value = value.original_value
                 base_line[current_key] = value
