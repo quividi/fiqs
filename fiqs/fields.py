@@ -80,6 +80,12 @@ class Field:
                 size = 2**31 - 1
             d["size"] = size
 
+        if "include" in self.data:
+            d["include"] = self.data["include"]
+
+        if "exclude" in self.data:
+            d["exclude"] = self.data["exclude"]
+
         return d
 
     def is_range(self):
