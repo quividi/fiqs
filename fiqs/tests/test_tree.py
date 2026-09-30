@@ -293,6 +293,26 @@ def test_total_sales_by_shop_range():
     assert sorted([li["shop_id"] for li in lines]) == range_keys
 
 
+def test_keyed_buckets_flatten_in_key_order():
+    result = {
+        "aggregations": {
+            "site": {
+                "buckets": {
+                    "b": {"doc_count": 2, "total": {"value": 2.0}},
+                    "a": {"doc_count": 1, "total": {"value": 1.0}},
+                    "c": {"doc_count": 0, "total": {"value": None}},
+                }
+            }
+        }
+    }
+
+    assert flatten_result(result) == [
+        {"site": "a", "doc_count": 1, "total": 1.0},
+        {"site": "b", "doc_count": 2, "total": 2.0},
+        {"site": "c", "doc_count": 0, "total": None},
+    ]
+
+
 def test_nb_sales_by_payment_type_by_date_range():
     lines = flatten_result(load_output("nb_sales_by_payment_type_by_date_range"))
 

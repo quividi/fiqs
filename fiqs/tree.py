@@ -152,19 +152,9 @@ class ResultTree:
     def _find_deeper_path(self, node):
         # The path should always end right before
         # a buckets node, or lead to a leaf
-        path = []
+        path = ["buckets", 0]
         current_key = None
-
-        path.append("buckets")
-        buckets = node["buckets"]
-
-        if isinstance(buckets, list):
-            path.append(0)
-            next_node = buckets[0]
-        elif isinstance(buckets, dict):
-            first_key = min(buckets)
-            path.append(first_key)
-            next_node = buckets[first_key]
+        next_node = node["buckets"][0]
 
         # We find the next key if there is one
         next_key = next((k for k in next_node if k not in RESERVED_KEYS), None)
@@ -234,6 +224,11 @@ class ResultTree:
                 lines.append(others_line)
 
             buckets = node["buckets"]
+            if isinstance(buckets, dict):
+                # Keyed buckets (filters, keyed ranges): list sorted by key, built once.
+                buckets = node["buckets"] = [
+                    {**bucket, "key": key} for key, bucket in sorted(buckets.items())
+                ]
 
             # If there are no more buckets, and we are at depth 0
             if not buckets and depth == 0:
@@ -277,7 +272,7 @@ class ResultTree:
 
                     # We update the path, the depth and the current_key
                     path.pop()  # current_key
-                    path.pop()  # `0` or first_key
+                    path.pop()  # `0`
                     path.pop()  # `buckets`
                     depth -= 1
                     current_key = path[-1]
@@ -294,21 +289,7 @@ class ResultTree:
                 continue
 
             # We need to go one level deeper
-            if isinstance(buckets, list):
-                bucket = buckets[0]
-                base_line.update(
-                    {
-                        current_key: bucket["key"],
-                    }
-                )
-            elif isinstance(buckets, dict):
-                first_key = min(buckets)
-                bucket = buckets[first_key]
-                base_line.update(
-                    {
-                        current_key: first_key,
-                    }
-                )
+            base_line[current_key] = buckets[0]["key"]
 
             added_path, next_key = self._find_deeper_path(node)
             path += added_path
