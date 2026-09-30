@@ -139,7 +139,9 @@ class FQuery:
         agg = self._configure_aggregations()
         self._configure_values(agg)
 
-        return self.search
+        # Results are read from aggregations only: size=0 skips the fetch phase
+        # and lets Elasticsearch request-cache the search.
+        return self.search.extra(size=0)
 
     def _configure_aggregations(self):
         current_agg = self.search.aggs

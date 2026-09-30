@@ -32,15 +32,13 @@ from fiqs.tests.conftest import load_output
 
 
 def test_one_metric():
-    expected = (
-        get_search()
-        .aggs.metric(
-            "total_sales",
-            "sum",
-            field="price",
-        )
-        .to_dict()
+    expected = get_search().extra(size=0)
+    expected.aggs.metric(
+        "total_sales",
+        "sum",
+        field="price",
     )
+    expected = expected.to_dict()
 
     fquery = FQuery(get_search()).values(
         total_sales=Sum(Sale.price),
@@ -51,15 +49,13 @@ def test_one_metric():
 
 
 def test_one_aggregation():
-    expected = (
-        get_search()
-        .aggs.metric(
-            "shop_id",
-            "terms",
-            field="shop_id",
-        )
-        .to_dict()
+    expected = get_search().extra(size=0)
+    expected.aggs.metric(
+        "shop_id",
+        "terms",
+        field="shop_id",
     )
+    expected = expected.to_dict()
 
     fquery = (
         FQuery(get_search())
@@ -76,7 +72,7 @@ def test_one_aggregation():
 
 
 def test_one_aggregation_one_metric():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "shop_id",
         "terms",
@@ -102,7 +98,7 @@ def test_one_aggregation_one_metric():
 
 
 def test_one_aggregation_count():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "shop_id",
         "terms",
@@ -124,7 +120,7 @@ def test_one_aggregation_count():
 
 
 def test_two_aggregations_one_metric():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "shop_id",
         "terms",
@@ -155,7 +151,7 @@ def test_two_aggregations_one_metric():
 
 
 def test_one_aggregation_two_metrics():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "shop_id",
         "terms",
@@ -186,7 +182,7 @@ def test_one_aggregation_two_metrics():
 
 
 def test_two_aggregations_two_metrics():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "shop_id",
         "terms",
@@ -241,7 +237,7 @@ def test_histogram(hmin, hmax):
         histogram_params.setdefault("extended_bounds", {})
         histogram_params["extended_bounds"]["max"] = hmax
 
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket("price", "histogram", **histogram_params).metric(
         "total_sales",
         "sum",
@@ -313,7 +309,7 @@ def test_date_histogram():
         },
     }
 
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket("timestamp", "date_histogram", **date_histogram_params).metric(
         "total_sales",
         "sum",
@@ -353,7 +349,7 @@ def test_date_histogram_month():
         },
     }
 
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket("timestamp", "date_histogram", **date_histogram_params).metric(
         "total_sales",
         "sum",
@@ -380,7 +376,7 @@ def test_date_histogram_month():
 
 
 def test_one_nested_aggregation_one_metric():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "products",
         "nested",
@@ -411,7 +407,7 @@ def test_one_nested_aggregation_one_metric():
 
 
 def test_two_nested_aggregations_one_metric():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "products",
         "nested",
@@ -453,7 +449,7 @@ def test_two_nested_aggregations_one_metric():
 
 def test_nested_parent_automatically_added():
     """Need to add one parent for each group_by key"""
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "products",
         "nested",
@@ -493,7 +489,7 @@ def test_nested_parent_automatically_added():
 
 def test_nested_parent_automatically_added_2():
     """Need to add multiple parents for one group_by key"""
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "products",
         "nested",
@@ -528,7 +524,7 @@ def test_nested_parent_automatically_added_2():
 
 def test_nested_parent_automatically_added_3():
     """Should this work differently? Can it?"""
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "products",
         "nested",
@@ -563,7 +559,7 @@ def test_nested_parent_automatically_added_3():
 
 
 def test_nested_parent_automatically_added_4():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "products",
         "nested",
@@ -593,7 +589,7 @@ def test_nested_parent_automatically_added_4():
 
 
 def test_reverse_nested_aggregation():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "products",
         "nested",
@@ -629,7 +625,7 @@ def test_reverse_nested_aggregation():
 
 
 def test_reverse_nested_aggregation_2():
-    search = get_search()
+    search = get_search().extra(size=0)
     product_id_bucket = search.aggs.bucket(
         "products",
         "nested",
@@ -672,7 +668,7 @@ def test_reverse_nested_aggregation_2():
 
 
 def test_reverse_nested_aggregation_doc_count():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "products",
         "nested",
@@ -704,7 +700,7 @@ def test_reverse_nested_aggregation_doc_count():
 
 
 def test_reverse_nested_aggregation_doc_count_2():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "products",
         "nested",
@@ -745,7 +741,7 @@ def test_reverse_nested_aggregation_doc_count_2():
 
 
 def test_reverse_nested_aggregation_doc_count_path():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "products",
         "nested",
@@ -787,7 +783,7 @@ def test_reverse_nested_aggregation_doc_count_path():
 
 
 def test_reverse_nested_aggregation_doc_count_path_2():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "products",
         "nested",
@@ -829,7 +825,7 @@ def test_reverse_nested_aggregation_doc_count_path_2():
 
 
 def test_default_size():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "shop_id",
         "terms",
@@ -862,7 +858,7 @@ def test_default_size():
 
 
 def test_agg_size_overrides_default_size():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "shop_id",
         "terms",
@@ -895,7 +891,7 @@ def test_agg_size_overrides_default_size():
 
 
 def test_default_size_with_choices():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "shop_id",
         "terms",
@@ -928,7 +924,7 @@ def test_default_size_with_choices():
 
 
 def test_aggregation_size():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "shop_id",
         "terms",
@@ -971,7 +967,7 @@ def test_size_ignored_by_grouped_field():
         }
 
     # Default size is ignored for grouped fields
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.metric(
         "shop_id",
         "filters",
@@ -995,7 +991,7 @@ def test_size_ignored_by_grouped_field():
     assert fsearch.to_dict() == search.to_dict()
 
     # It is still applied on other aggregations though
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "payment_type",
         "terms",
@@ -1042,7 +1038,7 @@ def test_ranges():
         },
     ]
 
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "shop_id",
         "range",
@@ -1089,7 +1085,7 @@ def test_ranges_2():
         },
     ]
 
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "shop_id",
         "range",
@@ -1135,6 +1131,7 @@ def test_order_by():
                 },
             }
         },
+        "size": 0,
     }
 
     fquery = (
@@ -1170,6 +1167,7 @@ def test_order_by_multiple_group_by():
                 "terms": {"field": "shop_id"},
             },
         },
+        "size": 0,
     }
 
     fquery = (
@@ -1201,6 +1199,7 @@ def test_order_by_field_with_choices():
                 },
             }
         },
+        "size": 0,
     }
 
     fquery = (
@@ -1223,7 +1222,7 @@ def test_order_by_count():
 
 
 def test_computed_automatically_added():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "shop_id",
         "terms",
@@ -1293,7 +1292,7 @@ def test_computed_automatically_added():
 
 
 def test_cardinality():
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.metric(
         "nb_shops",
         "cardinality",
@@ -1319,7 +1318,7 @@ def test_filters_aggregation():
         filters[country] = {
             "terms": {"shop_id": shop_ids},
         }
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.metric(
         "shop_id",
         "filters",
@@ -1355,7 +1354,7 @@ def test_filters_aggregation_multiple_aggregations():
         for country, shop_ids in shops_by_country.items()
     }
 
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "payment_type",
         "terms",
@@ -1384,7 +1383,7 @@ def test_filters_aggregation_multiple_aggregations():
     assert fsearch.to_dict() == search.to_dict()
 
     # We switch the order, for fun.
-    search = get_search()
+    search = get_search().extra(size=0)
     search.aggs.bucket(
         "shop_id",
         "filters",
@@ -2766,3 +2765,9 @@ def test_fill_missing_buckets_grouped_field_2():
 
     lines = fquery._add_missing_lines(lines)
     assert len(lines) == 6  # 3 payment types, 2 groups
+
+
+def test_configured_search_requests_no_hits():
+    fquery = FQuery(get_search()[0:10]).values(Count(Sale)).group_by(Sale.shop_id)
+
+    assert fquery._configure_search().to_dict()["size"] == 0
