@@ -278,11 +278,9 @@ class FQuery:
     def _add_missing_lines(self, lines):
         enums = self._get_field_enums(lines)
 
-        expected = math.prod(len(e) for e in enums) if enums else 0
-        if expected == len(lines):
+        if not enums or math.prod(len(e) for e in enums) == len(lines):
             return lines
 
-        keys = list(product(*enums)) if enums else []
         group_by_keys_without_nested = self._group_by_keys(nested=False)
         # Use str() on both sides to handle type mismatches between choice keys
         # (e.g. integer group keys) and ES result values (always strings for filter buckets)
@@ -290,7 +288,13 @@ class FQuery:
             tuple(str(line[key]) for key in group_by_keys_without_nested)
             for line in lines
         }
-        missing_keys = [key for key in keys if tuple(str(k) for k in key) not in treated_hashes]
+        # str() once per enum value, not once per combination
+        str_enums = [[str(value) for value in enum] for enum in enums]
+        missing_keys = (
+            key
+            for key, str_key in zip(product(*enums), product(*str_enums))
+            if str_key not in treated_hashes
+        )
 
         lines += self._create_missing_lines(
             missing_keys,
@@ -339,21 +343,18 @@ class FQuery:
         return calc_group_by_keys(self._group_by, nested)
 
     def _create_missing_lines(self, missing_keys, group_by_keys):
+        empty_line = self._create_empty_line()
         lines = []
 
         for missing_key in missing_keys:
-            base_line = {}
-            for current_key, value in zip(group_by_keys, missing_key):
-                if hasattr(value, "original_value"):  # In case of Choices
-                    value = value.original_value
-                base_line[current_key] = value
-
-            lines.append(self._create_empty_line(base_line))
+            line = dict(zip(group_by_keys, missing_key))
+            line.update(empty_line)
+            lines.append(line)
 
         return lines
 
-    def _create_empty_line(self, base_line):
-        empty_line = base_line.copy()
+    def _create_empty_line(self):
+        empty_line = {}
 
         for key, expression in self._expressions.items():
             if isinstance(expression, ReverseNested):
