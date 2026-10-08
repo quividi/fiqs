@@ -2227,6 +2227,65 @@ def test_fill_missing_buckets_values_in_other_agg():
     }
 
 
+def _sales_by_payment_type_by_shop():
+    fquery = (
+        FQuery(get_search())
+        .values(
+            total_sales=Sum(Sale.price),
+        )
+        .group_by(
+            Sale.payment_type,
+            Sale.shop_id,
+        )
+    )
+    return fquery, load_output("total_sales_by_payment_type_by_shop_id")
+
+
+def test_fill_missing_buckets_of_some_keys_only():
+    # Shop 1 is missing for wire transfers only: shop_id alone has no missing value
+    fquery, result = _sales_by_payment_type_by_shop()
+    for bucket in result["aggregations"]["payment_type"]["buckets"]:
+        if bucket["key"] == "wire_transfer":
+            bucket["shop_id"]["buckets"] = [
+                b for b in bucket["shop_id"]["buckets"] if b["key"] != 1
+            ]
+    lines = fquery._flatten_result(result)
+    assert len(lines) == 29
+
+    lines = fquery._add_missing_lines(lines, ["shop_id"])
+    assert len(lines) == 29
+
+
+def test_fill_missing_buckets_of_some_keys_only_adds_lines_with_other_keys_none():
+    fquery, result = _sales_by_payment_type_by_shop()
+    result["aggregations"]["payment_type"]["buckets"] = [
+        b
+        for b in result["aggregations"]["payment_type"]["buckets"]
+        if b["key"] != "cash"
+    ]
+    lines = fquery._flatten_result(result)
+    assert len(lines) == 20
+
+    lines = fquery._add_missing_lines(lines, ["payment_type"])
+    assert len(lines) == 21
+
+    added_line = next(line for line in lines if line["payment_type"] == "cash")
+    assert added_line == {
+        "payment_type": "cash",
+        "shop_id": None,
+        "total_sales": None,
+        "doc_count": 0,
+    }
+
+
+def test_fill_missing_buckets_of_unknown_key():
+    fquery, result = _sales_by_payment_type_by_shop()
+    lines = fquery._flatten_result(result)
+
+    with pytest.raises(ConfigurationError):
+        fquery._add_missing_lines(lines, ["shop"])
+
+
 def test_fill_missing_buckets_histogram_nothing_to_do():
     fquery = (
         FQuery(get_search())

@@ -82,7 +82,8 @@ class FQuery:
             )
 
             if fill_missing_buckets:
-                lines = self._add_missing_lines(lines)
+                keys = None if fill_missing_buckets is True else fill_missing_buckets
+                lines = self._add_missing_lines(lines, keys)
 
             return lines
         else:
@@ -275,18 +276,36 @@ class FQuery:
             except KeyError:
                 pass
 
-    def _add_missing_lines(self, lines):
-        enums = self._get_field_enums(lines)
+    def _add_missing_lines(self, lines, keys=None):
+        """Add an empty line for each missing combination of the group_by values.
 
-        if not enums or math.prod(len(e) for e in enums) == len(lines):
+        With `keys`, only the combinations of those group_by keys are filled; the
+        other group_by keys of the added lines are None.
+        """
+        group_by_keys = self._group_by_keys(nested=False)
+        enums = self._get_field_enums(lines)
+        other_keys = []
+
+        if keys is not None:
+            unknown = set(keys) - set(group_by_keys)
+            if unknown:
+                raise ConfigurationError(
+                    f"Cannot fill missing buckets of {sorted(unknown)}: not group_by keys"
+                )
+            enums_by_key = dict(zip(group_by_keys, enums))
+            other_keys = [key for key in group_by_keys if key not in keys]
+            group_by_keys = [key for key in group_by_keys if key in keys]
+            enums = [enums_by_key[key] for key in group_by_keys]
+
+        if not enums or (
+            not other_keys and math.prod(len(e) for e in enums) == len(lines)
+        ):
             return lines
 
-        group_by_keys_without_nested = self._group_by_keys(nested=False)
         # Use str() on both sides to handle type mismatches between choice keys
         # (e.g. integer group keys) and ES result values (always strings for filter buckets)
         treated_hashes = {
-            tuple(str(line[key]) for key in group_by_keys_without_nested)
-            for line in lines
+            tuple(str(line[key]) for key in group_by_keys) for line in lines
         }
         # str() once per enum value, not once per combination
         str_enums = [[str(value) for value in enum] for enum in enums]
@@ -296,10 +315,7 @@ class FQuery:
             if str_key not in treated_hashes
         )
 
-        lines += self._create_missing_lines(
-            missing_keys,
-            group_by_keys_without_nested,
-        )
+        lines += self._create_missing_lines(missing_keys, group_by_keys, other_keys)
 
         return lines
 
@@ -342,8 +358,9 @@ class FQuery:
     def _group_by_keys(self, nested=True):
         return calc_group_by_keys(self._group_by, nested)
 
-    def _create_missing_lines(self, missing_keys, group_by_keys):
-        empty_line = self._create_empty_line()
+    def _create_missing_lines(self, missing_keys, group_by_keys, other_keys=()):
+        empty_line = dict.fromkeys(other_keys)
+        empty_line.update(self._create_empty_line())
         lines = []
 
         for missing_key in missing_keys:
