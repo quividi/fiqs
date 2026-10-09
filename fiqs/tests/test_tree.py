@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 
 from fiqs import flatten_result
@@ -1765,3 +1767,22 @@ def test_nb_sales_by_product_type_by_part_id_filter_product_type_1():
         assert isinstance(line["doc_count"], int)
         assert isinstance(line["part_id"], str)
         assert isinstance(line["reverse_nested_root__doc_count"], int)
+
+
+def test_flatten_result_leaves_the_result_unchanged():
+    result = {
+        "aggregations": {
+            "shop": {
+                "buckets": [
+                    {"key": 1, "doc_count": 2, "total": {"value": 3}},
+                    {"key": 2, "doc_count": 1, "total": {"value": 4}},
+                ]
+            }
+        }
+    }
+    expected = copy.deepcopy(result)
+
+    lines = flatten_result(result)
+
+    assert result == expected
+    assert flatten_result(result) == lines

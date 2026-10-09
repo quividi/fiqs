@@ -140,7 +140,7 @@ class FQuery:
         # Use str() on both sides to handle type mismatches between choice keys
         # (e.g. integer group keys) and ES result values (always strings for filter buckets)
         treated_hashes = {
-            tuple(str(line[key]) for key in group_by_keys) for line in lines
+            tuple([str(line[key]) for key in group_by_keys]) for line in lines
         }
         if len(treated_hashes) == math.prod(len(e) for e in enums):
             return lines
@@ -273,26 +273,41 @@ class FQuery:
             else:
                 key_to_field[key] = exp
 
+        # Group-by values repeat on many lines: cast each one once per key
+        group_by_casts = {}
         for field_or_exp in self._group_by:
             if isinstance(field_or_exp, Aggregate):
-                key_to_field[field_or_exp.field.key] = field_or_exp
+                key = field_or_exp.field.key
             else:
-                key_to_field[field_or_exp.key] = field_or_exp
+                key = field_or_exp.key
+            key_to_field[key] = field_or_exp
+            group_by_casts[key] = {}
 
         pretty_lines = []
-        for line in lines:
-            pretty_line = line.copy()
+        for pretty_line in lines:  # flatten_result builds a new dict per line
             self._add_computed_results(pretty_line)
 
             others_line = False
             for key, value in pretty_line.items():
-                if key in key_to_field:
-                    field = key_to_field[key]
-                    if value == "others":
-                        pretty_line[key] = value  # add_others_line mode
-                        others_line = True
-                    else:
-                        pretty_line[key] = field.get_casted_value(value)
+                if key not in key_to_field:
+                    continue
+                if value == "others":
+                    others_line = True  # add_others_line mode
+                    continue
+                casts = group_by_casts.get(key)
+                if casts is None:  # metrics: mostly distinct values
+                    pretty_line[key] = key_to_field[key].get_casted_value(value)
+                    continue
+                # by type too: 1, 1.0 and True are equal dict keys
+                cache_key = (type(value), value)
+                try:
+                    pretty_line[key] = casts[cache_key]
+                except KeyError:
+                    casts[cache_key] = pretty_line[key] = key_to_field[
+                        key
+                    ].get_casted_value(value)
+                except TypeError:  # unhashable bucket key (multi_terms, composite)
+                    pretty_line[key] = key_to_field[key].get_casted_value(value)
 
             if others_line:
                 # We make sure all metrics are present

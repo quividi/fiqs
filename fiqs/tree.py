@@ -145,35 +145,10 @@ class ResultTree:
 
         return new_line
 
-    def _is_leaf(self, node):
-        # If there are still buckets, we are not on a leaf
-        return "buckets" not in node
-
-    def _find_deeper_path(self, node):
-        # The path should always end right before
-        # a buckets node, or lead to a leaf
-        path = ["buckets", 0]
-        current_key = None
-        next_node = node["buckets"][0]
-
-        # We find the next key if there is one
-        next_key = next((k for k in next_node if k not in RESERVED_KEYS), None)
-        if next_key:
-            if "buckets" in next_node[next_key]:
-                path.append(next_key)
-                current_key = next_key
-
-        return path, current_key
-
     def _bootstrap_current_key(self, aggregations):
         return min(k for k in aggregations if k not in RESERVED_KEYS)
 
     def _extract_lines(self, aggregations):
-        # Initialization
-        lines = []
-        depth = 0
-        base_line = {}
-
         current_key = self._bootstrap_current_key(aggregations)
         node = aggregations[current_key]
 
@@ -186,115 +161,43 @@ class ResultTree:
             # of exposing them and they are annoying to deal with
             aggregations = self._remove_nested_aggregations(aggregations)
 
-        current_key = self._bootstrap_current_key(aggregations)
-        path = [current_key]
-        node = aggregations[current_key]
+        # The smallest top-level aggregation key first, then the others in order
+        first_key = self._bootstrap_current_key(aggregations)
+        keys = [first_key] + [
+            k for k in aggregations if k not in RESERVED_KEYS and k != first_key
+        ]
 
-        while True:
-            # We get the current node using the path
-            node = aggregations
-
-            for key in path:
-                node = node[key]
-
-            if self._is_leaf(node):
-                # We create a new line:
-                new_line = self._create_line(base_line, node)
-                lines.append(new_line)
-
-                # We delete the leaf
-                parent = aggregations
-                for key in path[:-1]:
-                    parent = parent[key]
-
-                del parent[path[-1]]
-
-                # We update the path
-                path.pop()
-                path.pop()
-                depth -= 1
-
-                continue
-
-            if self.add_others_line and "sum_other_doc_count" in node:
-                others_doc_count = node.pop("sum_other_doc_count")
-                others_line = self._create_others_line(
-                    base_line, current_key, others_doc_count
-                )
-                lines.append(others_line)
-
-            buckets = node["buckets"]
-            if isinstance(buckets, dict):
-                # Keyed buckets (filters, keyed ranges): list sorted by key, built once.
-                buckets = node["buckets"] = [
-                    {**bucket, "key": key} for key, bucket in sorted(buckets.items())
-                ]
-
-            # If there are no more buckets, and we are at depth 0
-            if not buckets and depth == 0:
-                # If there is another level 0 aggregation, we work on it
-                next_key = next(
-                    (k for k in aggregations if k not in RESERVED_KEYS and k != current_key),
-                    None,
-                )
-                if next_key:
-                    aggregations.pop(current_key)
-                    base_line.pop(current_key)
-                    current_key = next_key
-                    path = [current_key]
-                    continue
-
-                # Otherwise we're done!
-                break
-
-            # If there are no more buckets but we're not at depth 0,
-            # either there is another aggregation at our depth or we go higher
-            if not buckets:
-                # Buckets may have been empty from the start
-                base_line.pop(current_key, None)
-
-                parent_bucket = aggregations
-                for key in path[:-2]:
-                    parent_bucket = parent_bucket[key]
-
-                # Is there another aggregation at our level?
-                next_key = next(
-                    (
-                        k
-                        for k in parent_bucket[path[-2]]
-                        if k not in RESERVED_KEYS and k != current_key
-                    ),
-                    None,
-                )
-                if not next_key:
-                    # No, we delete whole bucket
-                    del parent_bucket[path[-2]]
-
-                    # We update the path, the depth and the current_key
-                    path.pop()  # current_key
-                    path.pop()  # `0`
-                    path.pop()  # `buckets`
-                    depth -= 1
-                    current_key = path[-1]
-                else:
-                    # Yes, we only delete the current bucket
-                    parent_bucket[path[-2]].pop(current_key)
-
-                    # We update the path and the current_key
-                    path.pop()  # current_key
-                    current_key = next_key
-                    path.append(current_key)
-
-                # We go again
-                continue
-
-            # We need to go one level deeper
-            base_line[current_key] = buckets[0]["key"]
-
-            added_path, next_key = self._find_deeper_path(node)
-            path += added_path
-            if next_key:
-                current_key = next_key
-            depth += 1
-
+        lines = []
+        for key in keys:
+            self._extract_agg_lines(aggregations[key], key, {}, lines)
         return lines
+
+    @staticmethod
+    def _has_buckets(node):
+        return isinstance(node, dict) and "buckets" in node
+
+    def _extract_agg_lines(self, node, key, base_line, lines):
+        """Append to `lines` one line per leaf bucket of the aggregation `node`."""
+        if self.add_others_line and "sum_other_doc_count" in node:
+            lines.append(
+                self._create_others_line(base_line, key, node["sum_other_doc_count"])
+            )
+
+        buckets = node["buckets"]
+        if isinstance(buckets, dict):
+            # Keyed buckets (filters, keyed ranges), sorted by key
+            buckets = [{**bucket, "key": k} for k, bucket in sorted(buckets.items())]
+
+        for bucket in buckets:
+            bucket_line = {**base_line, key: bucket["key"]}
+            sub_keys = [k for k in bucket if k not in RESERVED_KEYS]
+            # A bucket whose first sub-aggregation has buckets is not a leaf: its
+            # sub-aggregations are flattened in turn
+            if sub_keys and self._has_buckets(bucket[sub_keys[0]]):
+                for sub_key in sub_keys:
+                    if self._has_buckets(bucket[sub_key]):
+                        self._extract_agg_lines(
+                            bucket[sub_key], sub_key, bucket_line, lines
+                        )
+            else:
+                lines.append(self._create_line(bucket_line, bucket))
