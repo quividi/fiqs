@@ -2032,7 +2032,7 @@ def test_fill_missing_buckets_nothing_to_do():
 
     result = load_output("total_sales_by_shop")
     lines = fquery._flatten_result(result)
-    assert lines == fquery._add_missing_lines(lines)
+    assert lines == fquery.add_missing_lines(lines)
 
 
 def test_fill_missing_buckets_cannot_do_anything():
@@ -2055,7 +2055,7 @@ def test_fill_missing_buckets_cannot_do_anything():
     ]
 
     lines = fquery._flatten_result(result)
-    assert lines == fquery._add_missing_lines(lines)
+    assert lines == fquery.add_missing_lines(lines)
 
     assert len(lines) == 9
 
@@ -2083,7 +2083,7 @@ def test_fill_missing_buckets_custom_choices():
     assert len(lines) == 9
     assert sorted([line["shop_id"] for line in lines]) == list(range(2, 11))
 
-    lines == fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == 10
     assert sorted([line["shop_id"] for line in lines]) == list(range(1, 11))
 
@@ -2122,7 +2122,7 @@ def test_fill_missing_buckets_field_choices():
     assert len(lines) == 9
     assert sorted([line["shop_id"] for line in lines]) == list(range(2, 11))
 
-    lines == fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == 10
     assert sorted([line["shop_id"] for line in lines]) == list(range(1, 11))
 
@@ -2163,7 +2163,7 @@ def test_fill_missing_buckets_field_choices_pretty():
     assert len(lines) == 9
     assert sorted([line["shop_id"] for line in lines]) == list(range(2, 11))
 
-    lines = fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == 10
     assert sorted([line["shop_id"] for line in lines]) == list(range(1, 11))
 
@@ -2207,7 +2207,7 @@ def test_fill_missing_buckets_values_in_other_agg():
     # Except the one I removed
     assert counter[1] == 2
 
-    lines = fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == 30
     # All shop ids are present three times
     counter = Counter([line["shop_id"] for line in lines])
@@ -2241,7 +2241,7 @@ def _sales_by_payment_type_by_shop():
     return fquery, load_output("total_sales_by_payment_type_by_shop_id")
 
 
-def test_fill_missing_buckets_of_some_keys_only():
+def test_add_missing_lines_exclude_fills_the_other_keys_only():
     # Shop 1 is missing for wire transfers only: shop_id alone has no missing value
     fquery, result = _sales_by_payment_type_by_shop()
     for bucket in result["aggregations"]["payment_type"]["buckets"]:
@@ -2252,21 +2252,16 @@ def test_fill_missing_buckets_of_some_keys_only():
     lines = fquery._flatten_result(result)
     assert len(lines) == 29
 
-    lines = fquery._add_missing_lines(lines, ["shop_id"])
+    lines = fquery.add_missing_lines(lines, exclude=["payment_type"])
     assert len(lines) == 29
 
 
-def test_fill_missing_buckets_of_some_keys_only_adds_lines_with_other_keys_none():
-    fquery, result = _sales_by_payment_type_by_shop()
-    result["aggregations"]["payment_type"]["buckets"] = [
-        b
-        for b in result["aggregations"]["payment_type"]["buckets"]
-        if b["key"] != "cash"
-    ]
+def test_add_missing_lines_exclude_sets_the_excluded_keys_none():
+    fquery, result = _sales_without_cash_bucket()
     lines = fquery._flatten_result(result)
     assert len(lines) == 20
 
-    lines = fquery._add_missing_lines(lines, ["payment_type"])
+    lines = fquery.add_missing_lines(lines, exclude=["shop_id"])
     assert len(lines) == 21
 
     added_line = next(line for line in lines if line["payment_type"] == "cash")
@@ -2278,12 +2273,46 @@ def test_fill_missing_buckets_of_some_keys_only_adds_lines_with_other_keys_none(
     }
 
 
-def test_fill_missing_buckets_of_unknown_key():
+def _sales_without_cash_bucket():
     fquery, result = _sales_by_payment_type_by_shop()
+    result["aggregations"]["payment_type"]["buckets"] = [
+        b
+        for b in result["aggregations"]["payment_type"]["buckets"]
+        if b["key"] != "cash"
+    ]
+    return fquery, result
+
+
+def test_add_missing_lines_exclude():
+    fquery, result = _sales_without_cash_bucket()
     lines = fquery._flatten_result(result)
+    for line in lines:
+        del line["shop_id"]  # e.g. lines merged over shop_id beforehand
+
+    # clip_id is not a group_by key: ignored
+    lines = fquery.add_missing_lines(lines, exclude=["shop_id", "clip_id"])
+
+    assert len(lines) == 21
+    added_line = next(line for line in lines if line["payment_type"] == "cash")
+    assert added_line["shop_id"] is None
+
+
+def test_eval_fill_missing_buckets_except(monkeypatch):
+    fquery, result = _sales_without_cash_bucket()
+    monkeypatch.setattr(fquery, "execute_search", lambda: result)
+
+    lines = fquery.eval(fill_missing_buckets_except=["shop_id"])
+
+    assert len(lines) == 21
+    added_line = next(line for line in lines if line["payment_type"] == "cash")
+    assert added_line["shop_id"] is None
+
+
+def test_eval_fill_missing_buckets_is_a_bool():
+    fquery, _ = _sales_by_payment_type_by_shop()
 
     with pytest.raises(ConfigurationError):
-        fquery._add_missing_lines(lines, ["shop"])
+        fquery.eval(fill_missing_buckets=["shop_id"])
 
 
 def test_fill_missing_buckets_histogram_nothing_to_do():
@@ -2305,7 +2334,7 @@ def test_fill_missing_buckets_histogram_nothing_to_do():
 
     lines = fquery._flatten_result(result)
     assert len(lines) == 11
-    lines = fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == 11
 
 
@@ -2330,7 +2359,7 @@ def test_fill_missing_buckets_histogram():
     result = load_output("total_sales_by_price_histogram")
 
     lines = fquery._flatten_result(result)
-    lines = fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     # No missing lines are added since when specifying extended_bounds
     # in ES, ES automatically adds empty buckets where needed
     assert len(lines) == 11
@@ -2368,7 +2397,7 @@ def test_fill_missing_buckets_date_histogram_nothing_to_do(
     result = load_output(f"total_sales_{pretty_period}_by_{pretty_period}")
 
     lines = fquery._flatten_result(result)
-    lines = fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == nb_lines
 
 
@@ -2404,7 +2433,7 @@ def test_fill_missing_buckets_date_histogram(
     result = load_output(f"total_sales_{pretty_period}_by_{pretty_period}")
 
     lines = fquery._flatten_result(result)
-    lines = fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == nb_lines
 
 
@@ -2431,7 +2460,7 @@ def test_fill_missing_buckets_date_histogram_multiple_days():
     result = load_output("total_sales_every_four_days")
 
     lines = fquery._flatten_result(result)
-    lines = fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == 16
 
 
@@ -2463,7 +2492,7 @@ def test_fill_missing_buckets_date_histogram_offset(start, end, nb_lines):
     result = load_output("total_sales_by_day_offset_8hours")
 
     lines = fquery._flatten_result(result)
-    lines = fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == nb_lines
 
 
@@ -2492,7 +2521,7 @@ def test_fill_missing_buckets_ranges():
     assert len(lines) == 6  # 3 shop ranges, 2 payment types
     assert {li["payment_type"] for li in lines} == {"cash", "store_credit"}
 
-    lines = fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == 9  # 3 shop ranges, 3 payment types
     added_lines = [li for li in lines if li["payment_type"] == "wire_transfer"]
     range_keys = ["1 - 5", "5 - 11", "11 - 15"]
@@ -2516,7 +2545,7 @@ def test_fill_missing_buckets_nested_nothing_to_do():
     lines = fquery._flatten_result(result)
     assert len(lines) == 10  # 10 parts
 
-    lines = fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == 10
 
 
@@ -2544,7 +2573,7 @@ def test_fill_missing_buckets_nested():
     lines = fquery._flatten_result(result)
     assert len(lines) == 99  # 10 parts, 10 products minus the one we removed
 
-    lines = fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == 100
 
 
@@ -2576,7 +2605,7 @@ def test_fill_missing_buckets_reverse_nested_doc_count():
     assert len(lines) == 4
     assert sorted([li["product_type"] for li in lines]) == product_types[1:]
 
-    lines = fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == 5
     assert sorted([li["product_type"] for li in lines]) == product_types
 
@@ -2626,7 +2655,7 @@ def test_fill_missing_buckets_reverse_nested():
         assert str(ReverseNested(Sale, total_sales=Sum(Sale.price))) in line
         assert str(ReverseNested(Sale, Count(Sale))) in line
 
-    lines = fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == 5
     assert sorted([li["product_type"] for li in lines]) == product_types
     for line in lines:
@@ -2671,7 +2700,7 @@ def test_fill_missing_buckets_date_range_with_keys():
     assert len(lines) == 1
     assert [li["timestamp"] for li in lines] == ["second_half"]
 
-    lines = fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == 2
     assert [li["timestamp"] for li in lines] == ["second_half", "first_half"]
 
@@ -2714,7 +2743,7 @@ def test_fill_missing_buckets_date_range_multiple_group_by():
     lines = fquery._flatten_result(result)
     assert len(lines) == 4  # 2 date periods, 2 payment types
 
-    lines = fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == 6  # 2 date periods, 2 + 1 payment types
 
 
@@ -2754,7 +2783,7 @@ def test_fill_missing_buckets_date_range_multiple_group_by_2():
     lines = fquery._flatten_result(result)
     assert len(lines) == 3  # 1 date period, 3 payment types
 
-    lines = fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == 6  # 1 + 1 date periods, 3 payment types
 
 
@@ -2788,7 +2817,7 @@ def test_fill_missing_buckets_grouped_field():
     lines = fquery._flatten_result(result)
     assert len(lines) == 4  # 2 payment types, 2 groups
 
-    lines = fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == 6  # 3 payment types, 2 groups
 
 
@@ -2822,7 +2851,7 @@ def test_fill_missing_buckets_grouped_field_2():
     lines = fquery._flatten_result(result)
     assert len(lines) == 3  # 3 payment types, 1 group
 
-    lines = fquery._add_missing_lines(lines)
+    lines = fquery.add_missing_lines(lines)
     assert len(lines) == 6  # 3 payment types, 2 groups
 
 

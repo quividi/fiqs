@@ -62,7 +62,18 @@ class FQuery:
 
         return self
 
-    def eval(self, flat=True, fill_missing_buckets=True, add_others_line=False):
+    def eval(
+        self,
+        flat=True,
+        fill_missing_buckets=True,
+        add_others_line=False,
+        fill_missing_buckets_except=None,
+    ):
+        if not isinstance(fill_missing_buckets, bool):
+            raise ConfigurationError(
+                "fill_missing_buckets is True or False; "
+                "use fill_missing_buckets_except to leave keys out"
+            )
         # Raise if computed fields are present, and we are not in flat mode
         if not flat:
             for expression in self._expressions.values():
@@ -71,23 +82,79 @@ class FQuery:
                         "Cannot use computed fields in non-flat mode"
                     )
 
-        search = self._configure_search()
-        result = search.execute()
+        return self.prepare_result(
+            self.execute_search(),
+            flat=flat,
+            fill_missing_buckets=fill_missing_buckets,
+            add_others_line=add_others_line,
+            fill_missing_buckets_except=fill_missing_buckets_except,
+        )
 
-        if flat:
-            lines = self._flatten_result(
-                result,
-                add_others_line=add_others_line,
-                remove_nested_aggregations=self._contains_nested_expressions(),
-            )
+    def execute_search(self):
+        """Run the Elasticsearch query; override to fetch the result elsewhere."""
+        return self._configure_search().execute()
 
-            if fill_missing_buckets:
-                keys = None if fill_missing_buckets is True else fill_missing_buckets
-                lines = self._add_missing_lines(lines, keys)
-
-            return lines
-        else:
+    def prepare_result(
+        self,
+        result,
+        flat=True,
+        fill_missing_buckets=True,
+        add_others_line=False,
+        fill_missing_buckets_except=None,
+    ):
+        """Flatten an Elasticsearch result of this query and fill its missing buckets."""
+        if not flat:
             return result
+
+        lines = self._flatten_result(
+            result,
+            add_others_line=add_others_line,
+            remove_nested_aggregations=self._contains_nested_expressions(),
+        )
+        if fill_missing_buckets:
+            lines = self.add_missing_lines(lines, exclude=fill_missing_buckets_except)
+        return lines
+
+    def add_missing_lines(self, lines, exclude=None):
+        """Add an empty line for each missing combination of the group_by values.
+
+        Extends `lines` in place and returns it. The group_by keys in `exclude` are
+        not filled: they are None in the added lines. `exclude` may name keys outside
+        the group_by.
+        """
+        if isinstance(exclude, str):
+            exclude = (exclude,)
+        exclude = exclude or ()
+        group_by_keys = self._group_by_keys(nested=False)
+        other_keys = [key for key in group_by_keys if key in exclude]
+        group_by_keys = [key for key in group_by_keys if key not in exclude]
+
+        # unfilled keys may be absent from the lines
+        enums = self._get_field_enums(lines, group_by_keys)
+
+        if not enums or (
+            not other_keys and math.prod(len(e) for e in enums) == len(lines)
+        ):
+            return lines
+
+        # Use str() on both sides to handle type mismatches between choice keys
+        # (e.g. integer group keys) and ES result values (always strings for filter buckets)
+        treated_hashes = {
+            tuple(str(line[key]) for key in group_by_keys) for line in lines
+        }
+        if len(treated_hashes) == math.prod(len(e) for e in enums):
+            return lines
+        # str() once per enum value, not once per combination
+        str_enums = [[str(value) for value in enum] for enum in enums]
+        missing_keys = (
+            key
+            for key, str_key in zip(product(*enums), product(*str_enums))
+            if str_key not in treated_hashes
+        )
+
+        lines += self._create_missing_lines(missing_keys, group_by_keys, other_keys)
+
+        return lines
 
     ################
     # Internal API #
@@ -276,54 +343,14 @@ class FQuery:
             except KeyError:
                 pass
 
-    def _add_missing_lines(self, lines, keys=None):
-        """Add an empty line for each missing combination of the group_by values.
-
-        With `keys`, only the combinations of those group_by keys are filled; the
-        other group_by keys of the added lines are None.
-        """
-        group_by_keys = self._group_by_keys(nested=False)
-        enums = self._get_field_enums(lines)
-        other_keys = []
-
-        if keys is not None:
-            unknown = set(keys) - set(group_by_keys)
-            if unknown:
-                raise ConfigurationError(
-                    f"Cannot fill missing buckets of {sorted(unknown)}: not group_by keys"
-                )
-            enums_by_key = dict(zip(group_by_keys, enums))
-            other_keys = [key for key in group_by_keys if key not in keys]
-            group_by_keys = [key for key in group_by_keys if key in keys]
-            enums = [enums_by_key[key] for key in group_by_keys]
-
-        if not enums or (
-            not other_keys and math.prod(len(e) for e in enums) == len(lines)
-        ):
-            return lines
-
-        # Use str() on both sides to handle type mismatches between choice keys
-        # (e.g. integer group keys) and ES result values (always strings for filter buckets)
-        treated_hashes = {
-            tuple(str(line[key]) for key in group_by_keys) for line in lines
-        }
-        # str() once per enum value, not once per combination
-        str_enums = [[str(value) for value in enum] for enum in enums]
-        missing_keys = (
-            key
-            for key, str_key in zip(product(*enums), product(*str_enums))
-            if str_key not in treated_hashes
-        )
-
-        lines += self._create_missing_lines(missing_keys, group_by_keys, other_keys)
-
-        return lines
-
-    def _get_field_enums(self, lines):
+    def _get_field_enums(self, lines, keys):
         enums = []
 
         for field in self._group_by:
             if isinstance(field, NestedField | ReverseNested):
+                continue
+            key = field.field.key if isinstance(field, Aggregate) else field.key
+            if key not in keys:
                 continue
 
             if isinstance(field, Aggregate):
@@ -334,7 +361,6 @@ class FQuery:
                     enums.append(field.field.choice_keys())
                 else:
                     # We just add the lines' values
-                    key = field.field.key
                     values = {line[key] for line in lines}
                     values = sorted(values)
                     enums.append(values)
@@ -348,7 +374,6 @@ class FQuery:
 
                 else:
                     # We add the lines' values
-                    key = field.key
                     values = {line[key] for line in lines}
                     values = sorted(values)
                     enums.append(values)

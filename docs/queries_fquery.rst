@@ -58,6 +58,10 @@ To execute the Elasticsearch query, you need to call ``eval`` on the FQuery obje
 
     * ``fill_missing_buckets``: If `False`, FQuery will not try to fill the missing buckets. For more details see `Filling missing buckets`_. Note that fiqs cannot fill the missing buckets in non flat mode. `True` by default.
 
+    * ``fill_missing_buckets_except``: A list of group_by keys to leave out of the filling, typically keys you aggregate away after the query; they are `None` in the added buckets. Keys not in the group_by are ignored. `None` by default.
+
+To flatten and fill a result you fetched yourself (a multisearch response, a cached result), call ``prepare_result(result, ...)``, which takes the same arguments as ``eval``; to fill lines you merged yourself, call ``add_missing_lines(lines, exclude=None)``, where ``exclude`` works as ``fill_missing_buckets_except``. Subclasses can override ``execute_search()`` to fetch the result of ``eval`` elsewhere.
+
 
 Values
 ******
