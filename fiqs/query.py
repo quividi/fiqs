@@ -2,7 +2,7 @@ import math
 from itertools import product
 
 from fiqs import flatten_result
-from fiqs.aggregations import Aggregate, ReverseNested
+from fiqs.aggregations import Aggregate, BucketMetric, ReverseNested
 from fiqs.exceptions import ConfigurationError
 from fiqs.fields import Field, GroupedField, NestedField
 
@@ -246,7 +246,7 @@ class FQuery:
 
     def _configure_values(self, agg):
         for key, expression in self._expressions.items():
-            if isinstance(expression, ReverseNested):
+            if isinstance(expression, BucketMetric):
                 expression.configure_aggregations(agg)
 
             elif expression.is_field_agg():
@@ -259,13 +259,18 @@ class FQuery:
                 )
 
     def _flatten_result(self, result, **kwargs):
-        lines = flatten_result(result, **kwargs)
+        bucket_metric_keys = {
+            exp.name
+            for exp in self._expressions.values()
+            if isinstance(exp, BucketMetric)
+        }
+        lines = flatten_result(result, bucket_metric_keys=bucket_metric_keys, **kwargs)
 
         key_to_field = {}
         for key, exp in self._expressions.items():
             if exp.is_doc_count():
                 continue
-            elif isinstance(exp, ReverseNested):
+            elif isinstance(exp, BucketMetric):
                 for nested_key, nested_expression in exp.expressions.items():
                     if nested_expression.is_doc_count():
                         continue
@@ -414,7 +419,7 @@ class FQuery:
         empty_line = {}
 
         for key, expression in self._expressions.items():
-            if isinstance(expression, ReverseNested):
+            if isinstance(expression, BucketMetric):
                 empty_line.update(expression.create_empty_line())
             else:
                 empty_line[key] = None

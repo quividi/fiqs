@@ -396,9 +396,76 @@ class DateRange(Aggregate):
         return v
 
 
-class ReverseNested(Metric):
-    def __init__(self, path_or_field_or_model, *expressions, **named_expressions):
+class BucketMetric(Metric):
+    """A single-bucket aggregation whose sub-metrics become columns `<name>__<key>`."""
+
+    def __init__(self, *expressions, **named_expressions):
         # /!\ named_expressions may not be correctly ordered
+        self._expressions = {}
+        for exp in expressions:
+            self._expressions[str(exp)] = exp
+        self._expressions.update(named_expressions)
+        # A nested BucketMetric's columns carry its own name, not the key it was given
+        keys = "__".join(
+            str(exp) if isinstance(exp, BucketMetric) else key
+            for key, exp in self._expressions.items()
+        )
+        self._str = f"{self.name}__{keys}"
+
+    @property
+    def name(self):
+        raise NotImplementedError
+
+    def bucket_params(self):
+        raise NotImplementedError
+
+    def __str__(self):
+        return self._str
+
+    def get_casted_value(self, v):
+        return v
+
+    def configure_aggregations(self, agg):
+        bucket = agg.bucket(**self.bucket_params())
+
+        for key, expression in self._expressions.items():
+            if isinstance(expression, BucketMetric):
+                expression.configure_aggregations(bucket)
+            elif expression.is_field_agg():
+                op = expression.__class__.__name__.lower()
+                bucket.metric(
+                    key,
+                    op,
+                    field=expression.field.get_storage_field(),
+                    **expression.params,
+                )
+
+    @functools.cached_property
+    def expressions(self):
+        """The leaf expressions, by their column key."""
+        expressions = {}
+        for key, expression in self._expressions.items():
+            if isinstance(expression, BucketMetric):
+                for sub_key, sub_expression in expression.expressions.items():
+                    expressions[f"{self.name}__{sub_key}"] = sub_expression
+            else:
+                expressions[f"{self.name}__{key}"] = expression
+        return expressions
+
+    def create_empty_line(self):
+        line = {f"{self.name}__doc_count": 0}
+        for key, expression in self._expressions.items():
+            if isinstance(expression, BucketMetric):
+                for sub_key, value in expression.create_empty_line().items():
+                    line[f"{self.name}__{sub_key}"] = value
+            elif not expression.is_doc_count():
+                line[f"{self.name}__{key}"] = None
+
+        return line
+
+
+class ReverseNested(BucketMetric):
+    def __init__(self, path_or_field_or_model, *expressions, **named_expressions):
         if isinstance(path_or_field_or_model, str):
             self.path = path_or_field_or_model or "root"
 
@@ -408,19 +475,15 @@ class ReverseNested(Metric):
         elif issubclass(path_or_field_or_model, Model):
             self.path = "root"
 
-        self._expressions = {}
-        for exp in expressions:
-            self._expressions[str(exp)] = exp
-        self._expressions.update(named_expressions)
-        keys = "__".join(self._expressions.keys())
-        self._str = f"reverse_nested_{self.path}__{keys}"
+        super().__init__(*expressions, **named_expressions)
 
-    def __str__(self):
-        return self._str
+    @property
+    def name(self):
+        return f"reverse_nested_{self.path}"
 
-    def reverse_agg_params(self):
+    def bucket_params(self):
         params = {
-            "name": f"reverse_nested_{self.path}",
+            "name": self.name,
             "agg_type": "reverse_nested",
         }
 
@@ -429,41 +492,29 @@ class ReverseNested(Metric):
 
         return params
 
-    def get_casted_value(self, v):
-        return v
 
-    def configure_aggregations(self, agg):
-        reverse_agg_params = self.reverse_agg_params()
-        reverse_nested_bucket = agg.bucket(**reverse_agg_params)
+class Filter(BucketMetric):
+    """Metrics over the documents of the current bucket that match `query`.
 
-        for key, expression in self._expressions.items():
-            if expression.is_field_agg():
-                op = expression.__class__.__name__.lower()
-                reverse_nested_bucket.metric(
-                    key,
-                    op,
-                    field=expression.field.get_storage_field(),
-                    **expression.params,
-                )
+    `query` is an Elasticsearch query (dict or elasticsearch.dsl Q); inside a nested
+    aggregation, it applies to the nested documents.
+    """
 
-    @functools.cached_property
-    def expressions(self):
+    def __init__(self, name, query, *expressions, **named_expressions):
+        self._name = name
+        self.query = query
+        super().__init__(*expressions, **named_expressions)
+
+    @property
+    def name(self):
+        return f"filter_{self._name}"
+
+    def bucket_params(self):
         return {
-            f"reverse_nested_{self.path}__{key}": expression
-            for key, expression in self._expressions.items()
+            "name": self.name,
+            "agg_type": "filter",
+            "filter": self.query,
         }
-
-    def create_empty_line(self):
-        line = {}
-
-        for key, expression in self.expressions.items():
-            if expression.is_doc_count():
-                continue
-            line[key] = None
-
-        line[f"reverse_nested_{self.path}__doc_count"] = 0
-
-        return line
 
 
 class Operation(Metric):

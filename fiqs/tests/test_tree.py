@@ -1786,3 +1786,20 @@ def test_flatten_result_leaves_the_result_unchanged():
 
     assert result == expected
     assert flatten_result(result) == lines
+
+
+def test_remove_nested_aggregations_filter():
+    # A filter node holding a field metric looks like a nested node: being a known
+    # bucket metric keeps it
+    bucket = {
+        "doc_count": 6,
+        "key": "p1",
+        "filter_cheap": {"doc_count": 2, "total": {"value": 15.0}},
+    }
+    node = {"products": {"doc_count": 10, "product_id": {"buckets": [bucket]}}}
+
+    tree = ResultTree({})
+    tree.bucket_metric_keys = frozenset({"filter_cheap"})
+    result = tree._remove_nested_aggregations(node)
+
+    assert result == {"doc_count": 10, "product_id": {"buckets": [bucket]}}

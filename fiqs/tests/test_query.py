@@ -10,6 +10,7 @@ from fiqs.aggregations import (
     Count,
     DateHistogram,
     DateRange,
+    Filter,
     Histogram,
     Ratio,
     ReverseNested,
@@ -2859,3 +2860,133 @@ def test_configured_search_requests_no_hits():
     fquery = FQuery(get_search()[0:10]).values(Count(Sale)).group_by(Sale.shop_id)
 
     assert fquery._configure_search().to_dict()["size"] == 0
+
+
+IN_WAREHOUSE_1 = {
+    "nested": {
+        "path": "products.parts",
+        "query": {"term": {"products.parts.warehouse_id": "warehouse_1"}},
+    }
+}
+
+
+def test_filter_aggregation():
+    search = get_search().extra(size=0)
+    search.aggs.bucket(
+        "products",
+        "nested",
+        path="products",
+    ).bucket(
+        "product_id",
+        "terms",
+        field="products.product_id",
+    ).bucket(
+        "filter_warehouse_1",
+        "filter",
+        filter=IN_WAREHOUSE_1,
+    ).bucket(
+        "reverse_nested_root",
+        "reverse_nested",
+    )
+
+    fquery = (
+        FQuery(get_search())
+        .values(Filter("warehouse_1", IN_WAREHOUSE_1, ReverseNested(Sale, Count(Sale))))
+        .group_by(Sale.product_id)
+    )
+    fsearch = fquery._configure_search()
+
+    assert search.to_dict() == fsearch.to_dict()
+
+
+def test_filter_flatten():
+    metric = Filter("warehouse_1", IN_WAREHOUSE_1, ReverseNested(Sale, Count(Sale)))
+    cheap = Filter(
+        "cheap",
+        {"range": {"products.product_price": {"lt": 10}}},
+        total=Sum(Sale.product_price),
+    )
+    fquery = FQuery(get_search()).values(metric, cheap).group_by(Sale.product_id)
+    fquery._configure_search()
+    result = {
+        "aggregations": {
+            "products": {
+                "doc_count": 10,
+                "product_id": {
+                    "buckets": [
+                        {
+                            "key": "p1",
+                            "doc_count": 6,
+                            "filter_warehouse_1": {
+                                "doc_count": 4,
+                                "reverse_nested_root": {"doc_count": 3},
+                            },
+                            "filter_cheap": {"doc_count": 2, "total": {"value": 15.0}},
+                        },
+                        {
+                            "key": "p2",
+                            "doc_count": 4,
+                            "filter_warehouse_1": {
+                                "doc_count": 0,
+                                "reverse_nested_root": {"doc_count": 0},
+                            },
+                            "filter_cheap": {"doc_count": 0, "total": {"value": 0.0}},
+                        },
+                    ]
+                },
+            }
+        }
+    }
+
+    lines = fquery._flatten_result(result)
+
+    assert str(metric) == "filter_warehouse_1__reverse_nested_root__doc_count"
+    named = Filter("warehouse_1", IN_WAREHOUSE_1, rn=ReverseNested(Sale, Count(Sale)))
+    assert str(named) == str(metric)
+    assert str(cheap) == "filter_cheap__total"
+    assert lines == [
+        {
+            "product_id": "p1",
+            "doc_count": 6,
+            "filter_warehouse_1__doc_count": 4,
+            "filter_warehouse_1__reverse_nested_root__doc_count": 3,
+            "filter_cheap__doc_count": 2,
+            "filter_cheap__total": 15,
+        },
+        {
+            "product_id": "p2",
+            "doc_count": 4,
+            "filter_warehouse_1__doc_count": 0,
+            "filter_warehouse_1__reverse_nested_root__doc_count": 0,
+            "filter_cheap__doc_count": 0,
+            "filter_cheap__total": 0,
+        },
+    ]
+    assert isinstance(lines[0]["filter_cheap__total"], int)
+
+
+def test_fill_missing_buckets_filter():
+    metric = Filter("warehouse_1", IN_WAREHOUSE_1, ReverseNested(Sale, Count(Sale)))
+    fquery = (
+        FQuery(get_search())
+        .values(metric)
+        .group_by(FieldWithChoices(Sale.product_id, choices=["p1", "p2"]))
+    )
+    fquery._configure_search()
+    lines = [
+        {
+            "product_id": "p1",
+            "doc_count": 6,
+            "filter_warehouse_1__doc_count": 4,
+            "filter_warehouse_1__reverse_nested_root__doc_count": 3,
+        }
+    ]
+
+    lines = fquery.add_missing_lines(lines)
+
+    assert lines[1] == {
+        "product_id": "p2",
+        "doc_count": 0,
+        "filter_warehouse_1__doc_count": 0,
+        "filter_warehouse_1__reverse_nested_root__doc_count": 0,
+    }

@@ -19,6 +19,9 @@ class ResultTree:
             raise Exception(
                 "ResultTree expects a dict or " "an elasticsearch.dsl Response object"
             )
+        # Single-bucket metric aggregations (fiqs.aggregations.BucketMetric) other
+        # than reverse_nested ones: their sub-metrics become columns of the line
+        self.bucket_metric_keys = frozenset()
 
     def flatten_result(self, **kwargs):
         if "aggregations" not in self.es_result:
@@ -26,6 +29,7 @@ class ResultTree:
 
         self.add_others_line = kwargs.get("add_others_line", False)
         self.remove_nested_aggregations = kwargs.get("remove_nested_aggregations", True)
+        self.bucket_metric_keys = frozenset(kwargs.get("bucket_metric_keys", ()))
 
         aggregations = self.es_result["aggregations"]
         return self._extract_lines(aggregations)
@@ -83,7 +87,7 @@ class ResultTree:
         for key in child_keys:
             child_node = node[key]
 
-            if key.startswith("reverse_nested"):
+            if self._is_bucket_metric(key):
                 _node[key] = child_node
 
             elif isinstance(child_node, dict):
@@ -120,13 +124,8 @@ class ResultTree:
         new_line = base_line.copy()
 
         for k, v in node.items():
-            if k.startswith("reverse_nested"):
-                for nested_k, nested_v in v.items():
-                    if isinstance(nested_v, dict):
-                        value = nested_v["value"]
-                    else:
-                        value = nested_v
-                    new_line[f"{k}__{nested_k}"] = value
+            if self._is_bucket_metric(k):
+                self._add_bucket_metric(new_line, k, v)
 
             elif k == "doc_count":
                 new_line[k] = v
@@ -136,6 +135,18 @@ class ResultTree:
                 new_line[k] = v["value"]
 
         return new_line
+
+    def _is_bucket_metric(self, key):
+        return key.startswith("reverse_nested") or key in self.bucket_metric_keys
+
+    def _add_bucket_metric(self, line, prefix, node):
+        for k, v in node.items():
+            if not isinstance(v, dict):
+                line[f"{prefix}__{k}"] = v
+            elif "value" in v:
+                line[f"{prefix}__{k}"] = v["value"]
+            else:
+                self._add_bucket_metric(line, f"{prefix}__{k}", v)
 
     def _create_others_line(self, base_line, key, others_doc_count):
         new_line = base_line.copy()
